@@ -156,6 +156,7 @@ async fn test_ipc_multiple_clients_concurrent() {
                     raw_b64: "test".to_string(),
                     screen: "concurrent".to_string(),
                 },
+                _ => Response::Error { message: "unexpected request".into() },
             };
 
             if write_frame(&mut stream, &resp).await.is_err() {

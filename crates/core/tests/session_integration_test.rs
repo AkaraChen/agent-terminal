@@ -80,6 +80,11 @@ impl MockSession {
                                         };
                                         let _ = write_frame(&mut stream, &resp).await;
                                     }
+                                    Ok(Request::Subscribe) | Ok(Request::Unsubscribe) | Ok(Request::Authenticate { .. }) => {
+                                        let _ = write_frame(&mut stream, &Response::Error {
+                                            message: "not supported".into(),
+                                        }).await;
+                                    }
                                     Err(_) => break,
                                 }
                             }

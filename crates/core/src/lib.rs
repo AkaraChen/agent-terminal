@@ -4,6 +4,8 @@ pub mod ipc;
 pub mod lock;
 pub mod protocol;
 pub mod session;
+#[cfg(feature = "tcp")]
+pub mod tcp;
 
 /// Returns the default shell path for the current platform.
 ///

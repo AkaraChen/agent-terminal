@@ -96,6 +96,11 @@ impl MockDslSession {
                                     Ok(Request::Unsubscribe) => {
                                         let _ = write_frame(&mut stream, &Response::Ok).await;
                                     }
+                                    Ok(Request::Authenticate { .. }) => {
+                                        let _ = write_frame(&mut stream, &Response::Error {
+                                            message: "authentication not supported".into(),
+                                        }).await;
+                                    }
                                     Err(_) => break,
                                 }
                             }

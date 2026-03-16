@@ -332,6 +332,9 @@ async fn handle_ipc_client(
                         Ok(Request::Subscribe) => Some(Response::Error {
                             message: "already subscribed".into(),
                         }),
+                        Ok(Request::Authenticate { .. }) => Some(Response::Error {
+                            message: "authentication not supported on Unix socket".into(),
+                        }),
                         Err(_) => break,
                     }
                 }
@@ -388,6 +391,9 @@ async fn handle_ipc_client(
                         message: "buffer lock poisoned".into(),
                     }),
                 },
+                Request::Authenticate { .. } => Some(Response::Error {
+                    message: "authentication not supported on Unix socket".into(),
+                }),
             }
         };
 

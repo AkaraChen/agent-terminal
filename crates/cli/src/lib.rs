@@ -39,6 +39,24 @@ enum Commands {
         #[command(subcommand)]
         action: TestAction,
     },
+    /// Connect to a remote session over TCP.
+    Remote {
+        /// TCP address (e.g., "192.168.1.100:8080").
+        addr: String,
+        /// Authentication token.
+        #[arg(short, long)]
+        token: String,
+        #[command(subcommand)]
+        action: RemoteAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum RemoteAction {
+    /// Write input to the remote session.
+    Write { data: String },
+    /// Get current output from the remote session.
+    Dump,
 }
 
 #[derive(Subcommand)]
@@ -76,5 +94,8 @@ pub fn run() -> Result<()> {
             session_id,
             action,
         } => rt.block_on(commands::test::run(&session_id, action)),
+        Commands::Remote { addr, token, action } => {
+            rt.block_on(commands::remote::run(&addr, &token, action))
+        }
     }
 }

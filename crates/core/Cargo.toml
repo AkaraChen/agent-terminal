@@ -16,6 +16,13 @@ anyhow = "1"
 nix = { version = "0.27", features = ["signal", "ioctl", "term"] }
 base64 = "0.22"
 chrono = "0.4"
+rustls = { version = "0.22", optional = true }
+rustls-pemfile = { version = "2", optional = true }
+tokio-rustls = { version = "0.25", optional = true }
+
+[features]
+default = []
+tcp = ["rustls", "rustls-pemfile", "tokio-rustls"]
 
 [dev-dependencies]
 tempfile = "3"

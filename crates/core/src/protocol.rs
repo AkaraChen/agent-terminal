@@ -12,6 +12,8 @@ pub enum Request {
     Subscribe,
     /// Unsubscribe from output stream.
     Unsubscribe,
+    /// Authenticate with the server (TCP mode).
+    Authenticate { token: String },
 }
 
 /// Response returned by the session server over the Unix socket.
@@ -212,5 +214,31 @@ mod tests {
         let resp = Response::OutputChunk { raw_b64: "dGVzdA==".to_string() };
         let json = serde_json::to_string(&resp).unwrap();
         assert!(json.contains("\"type\":\"output_chunk\""), "json = {json}");
+    }
+
+    // ── Authenticate ───────────────────────────────────────────────────
+
+    #[test]
+    fn test_authenticate_serializes_type_tag() {
+        let req = Request::Authenticate { token: "secret123".to_string() };
+        let json = serde_json::to_string(&req).unwrap();
+        assert!(json.contains("\"type\":\"authenticate\""), "json = {json}");
+    }
+
+    #[test]
+    fn test_authenticate_serializes_token() {
+        let req = Request::Authenticate { token: "my_token".to_string() };
+        let json = serde_json::to_string(&req).unwrap();
+        assert!(json.contains("\"token\":\"my_token\""), "json = {json}");
+    }
+
+    #[test]
+    fn test_authenticate_deserializes() {
+        let json = r#"{"type":"authenticate","token":"test_token"}"#;
+        let req: Request = serde_json::from_str(json).unwrap();
+        match req {
+            Request::Authenticate { token } => assert_eq!(token, "test_token"),
+            _ => panic!("expected Authenticate"),
+        }
     }
 }

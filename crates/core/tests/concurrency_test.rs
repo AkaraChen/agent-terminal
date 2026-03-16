@@ -48,6 +48,11 @@ fn test_concurrent_writes_same_session() {
                                     };
                                     let _ = write_frame(&mut stream, &resp).await;
                                 }
+                                Ok(Request::Subscribe) | Ok(Request::Unsubscribe) | Ok(Request::Authenticate { .. }) => {
+                                    let _ = write_frame(&mut stream, &Response::Error {
+                                        message: "not supported".into(),
+                                    }).await;
+                                }
                                 Err(_) => break,
                             }
                         }
@@ -216,6 +221,11 @@ fn test_concurrent_write_and_read() {
                                         screen: content,
                                     };
                                     let _ = write_frame(&mut stream, &resp).await;
+                                }
+                                Ok(Request::Subscribe) | Ok(Request::Unsubscribe) | Ok(Request::Authenticate { .. }) => {
+                                    let _ = write_frame(&mut stream, &Response::Error {
+                                        message: "not supported".into(),
+                                    }).await;
                                 }
                                 Err(_) => break,
                             }
