@@ -83,7 +83,30 @@ cargo run -- test 550e84 wait-for "hello" --timeout 10
 cargo run -- test 550e84 assert-contains "hello world"
 ```
 
-### 6. Session 结束
+### 6. 远程访问（TCP 模式）
+
+在不同机器上访问 session（需要编译时启用 TCP 支持）：
+
+```bash
+# 编译启用 TCP 支持
+cargo build --release --features tcp
+
+# 在服务器端启动 TCP 服务（在 session 所在机器运行）
+# 注意：当前 TCP 服务需要手动启动，会监听指定端口
+cargo run --release --features tcp -- start
+
+# 从远程机器连接
+# 需要先知道服务器地址和认证 token
+# agent-terminal remote <addr>:<port> --token <secret> write "ls\n"
+# agent-terminal remote <addr>:<port> --token <secret> dump
+```
+
+**安全注意**：
+- TCP 模式使用 TLS 加密通信
+- 需要 token 认证才能访问 session
+- 生产环境请使用强 token 并妥善保管
+
+### 7. Session 结束
 
 在终端 A 中输入 `exit` 或按 `Ctrl+D` 退出 zsh。进程会自动清理 lock 文件和 socket 文件。
 

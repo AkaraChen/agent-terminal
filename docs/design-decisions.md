@@ -2,11 +2,17 @@
 
 ## 为什么用 lock 文件 + Unix socket，而不是……
 
-### 为什么不用 TCP socket？
+### 为什么默认不用 TCP socket？
 
 Unix socket 路径从 lock 文件读取，整个通信链路完全在本地文件系统上，不占用网络端口，权限控制更细（`0600`），也不存在被远程访问的风险。
 
 对于集成测试框架来说，session 和测试代码通常在同一台机器上，Unix socket 足够且更安全。
+
+**TCP 模式作为可选功能**：
+- 通过 `tcp` feature flag 启用（`cargo build --features tcp`）
+- 支持 TLS 加密和 token 认证
+- 用于跨机器访问场景（如服务器上运行 session，测试 runner 从 CI 环境连接）
+- 实现为 proxy 模式：TCP 服务器接收连接，认证后转发到本地 Unix socket
 
 ### 为什么不用命名管道（FIFO）？
 
