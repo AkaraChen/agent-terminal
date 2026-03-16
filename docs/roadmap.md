@@ -27,7 +27,27 @@
 
 ### core crate 单元测试
 
-`buffer`、`protocol`、`lock`、`ipc` 四个模块均已补全 `#[cfg(test)]` 单元测试，共 63 个用例，覆盖率 **99%**（117 行中 116 行，`session.rs` 因依赖真实 PTY 不计入）。详见 [architecture.md § 测试策略](architecture.md)。
+`buffer`、`protocol`、`lock`、`ipc` 四个模块均已补全 `#[cfg(test)]` 单元测试，共 73 个用例，覆盖率 **99%**（`session.rs` 因依赖真实 PTY 不计入）。详见 [architecture.md § 测试策略](architecture.md)。
+
+### 集成测试（87 个用例）
+
+实现了跨组件的集成测试覆盖：
+
+- **IPC 集成**（10 个）：roundtrip、并发客户端、重连、大 payload、畸形帧处理
+- **Lock 集成**（11 个）：会话生命周期、心跳、过期清理、前缀匹配、并发更新
+- **Buffer 集成**（15 个）：VT100 解析、1MB 边界、并发读写、二进制/Unicode
+- **Protocol 集成**（14 个）：序列化、边缘情况、无效 JSON、特殊字符
+- **Session 集成**（9 个）：Mock PTY 生命周期、命令执行、并发客户端
+- **CLI 集成**（8 个）：完整工作流、错误处理
+- **并发测试**（5 个）：并发写入/读取、会话创建、心跳与清理
+- **错误处理**（11 个）：错误传播、恢复、损坏文件、网络分区
+- **压力测试**（4 个）：快速写入、大量会话、高频心跳、大输出
+
+**关键认知**：
+- 将 `core` crate 重命名为 `agent-terminal-core` 避免与 `std::core` 冲突
+- Mock 服务器模式使 session 逻辑可测试，无需真实 PTY
+- 并发测试需要同步机制（Mutex）保护 lock 文件的 read-modify-write 周期
+- VT100 库对 Unicode 和多字节字符处理有限制，测试预期需相应调整
 
 ---
 

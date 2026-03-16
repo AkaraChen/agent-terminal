@@ -85,3 +85,95 @@ tokio 的 `watch::channel` 足够轻量，一个 `bool` 值，所有 task clone 
 ## session_id_prefix 匹配
 
 `LockFile::find_active(prefix)` 允许用户只输入 session ID 的前几个字符（比如 `550e84`），节省打字。这是个 UX 取舍：如果两个 session 的 session_id 前缀相同（UUID v4 碰撞概率极低），只返回第一个匹配项，不报错。未来可以改为报歧义错误。
+
+---
+
+## Crate 命名：从 `core` 到 `agent-terminal-core`
+
+### 问题
+
+在集成测试中使用 `use core::ipc::IpcClient` 会与 Rust 标准库的 `core` 模块冲突，导致编译错误：
+
+```rust
+error: could not find `prelude` in `core`
+```
+
+### 决策
+
+将 crate 名称从 `core` 改为 `agent-terminal-core`，并在代码中使用下划线导入：
+
+```rust
+use agent_terminal_core::ipc::IpcClient;
+```
+
+### 取舍
+
+- **收益**：消除命名冲突，集成测试可以正常编写；语义更清晰
+- **成本**：需要更新所有依赖处的导入语句（CLI crate 的 4 个文件）
+- **未考虑的选项**：使用 `extern crate core as core_crate` — 过于 hacky，不符合 Rust 2018+ 的 idiomatic 用法
+
+---
+
+## 集成测试中的 Mock 服务器
+
+### 问题
+
+`session.rs` 依赖真实 PTY（`portable-pty` + `/bin/zsh`），无法在测试环境中直接测试。
+
+### 决策
+
+在集成测试中实现 `MockSession` 结构，模拟 session 服务器的行为：
+
+```rust
+struct MockSession {
+    buffer: Arc<Mutex<OutputBuffer>>,
+    socket_path: String,
+    session_id: String,
+    shutdown_tx: Option<watch::Sender<bool>>,
+}
+```
+
+Mock 服务器接受 IPC 连接，维护一个内存中的 buffer，支持 `WriteInput` 和 `GetOutput` 请求。
+
+### 取舍
+
+- **收益**：session 逻辑可测试；无需真实 zsh；测试运行快速稳定
+- **成本**：Mock 行为与真实 session 可能有差异；需要单独维护 Mock 实现
+- **关键洞察**：Mock 模式验证 IPC 协议和客户端行为，但无法捕获 PTY 相关的 bug（如 ANSI 序列处理）。这类问题需要端到端测试补充。
+
+---
+
+## Lock 文件并发访问的同步策略
+
+### 问题
+
+并发心跳测试中，多个线程同时读取-修改-写入 lock 文件会导致 race condition：
+
+```rust
+// 线程 A 读取
+let mut lock = LockFile::read(&id)?;
+// 线程 B 读取（相同内容）
+let mut lock = LockFile::read(&id)?;
+// 线程 A 更新并写入
+lock.heartbeat()?;
+// 线程 B 基于过期数据写入，覆盖 A 的更新
+lock.heartbeat()?;
+```
+
+### 决策
+
+在测试中使用 `Arc<Mutex<()>>` 同步 lock 文件访问：
+
+```rust
+let sync = Arc::new(Mutex::new(()));
+// ...
+let _guard = sync.lock().unwrap();
+let mut lock = LockFile::read(&id).unwrap();
+lock.heartbeat().unwrap();
+```
+
+### 取舍
+
+- **收益**：测试稳定通过；揭示真实使用场景中的潜在问题
+- **成本**：测试代码增加同步开销；生产代码未加同步（依赖单进程写，多进程读）
+- **生产环境假设**：正常使用时，一个 session 只有一个 heartbeat task 写入自己的 lock 文件，不存在并发写。集成测试的并发写是人为构造的边界情况。

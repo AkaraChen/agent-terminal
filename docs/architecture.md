@@ -167,17 +167,43 @@ Response (session → client):
 运行方式：
 
 ```bash
-cargo test -p core
+cargo test -p agent-terminal-core
 ```
 
 覆盖率测量（排除 `session.rs`）：
 
 ```bash
-cargo tarpaulin -p core --out Stdout
+cargo tarpaulin -p agent-terminal-core --out Stdout
+```
+
+### 集成测试（`crates/core/tests/`）
+
+87 个集成测试覆盖跨组件场景：
+
+| 测试文件 | 数量 | 覆盖场景 |
+|---|---|---|
+| `ipc_integration_test.rs` | 10 | IPC roundtrip、多客户端并发、重连、大 payload、畸形帧 |
+| `lock_integration_test.rs` | 11 | 会话生命周期、心跳、过期清理、前缀匹配、并发心跳 |
+| `buffer_integration_test.rs` | 15 | VT100 解析、1MB 边界、并发读写、二进制/Unicode 数据 |
+| `protocol_integration_test.rs` | 14 | 序列化、Unicode/特殊字符、无效 JSON、边界情况 |
+| `session_integration_test.rs` | 9 | Mock PTY 完整生命周期、命令执行、并发客户端 |
+| `cli_integration_test.rs` | 8 | 列表、写入、获取输出的完整工作流 |
+| `concurrency_test.rs` | 5 | 并发写入/读取、并发会话创建、并发心跳与清理 |
+| `error_handling_test.rs` | 11 | socket 不存在、损坏的 lock 文件、权限拒绝、网络分区 |
+| `stress_test.rs` | 4 | 快速写入、大量会话、高频心跳、大输出 |
+
+运行方式：
+
+```bash
+# 所有集成测试
+cargo test -p agent-terminal-core --test '*'
+
+# 特定测试文件
+cargo test -p agent-terminal-core --test ipc_integration_test
 ```
 
 ### session.rs — 仅集成测试
 
 `session.rs` 直接调用 `portable-pty` openpty、spawn zsh、`crossterm::terminal::enable_raw_mode`，需要真实 TTY 和 `/bin/zsh`，无法在 CI 的无头环境中单测。
 
-它被排除在 tarpaulin 覆盖率统计之外（见 `.tarpaulin.toml`）。对它的验证通过手动端到端测试，或未来的集成测试框架（v0.2 DSL）完成。
+它被排除在 tarpaulin 覆盖率统计之外（见 `.tarpaulin.toml`）。对它的验证通过手动端到端测试，或集成测试中的 Mock 实现完成。
