@@ -23,6 +23,14 @@
 
 ---
 
+## Completed
+
+### core crate 单元测试
+
+`buffer`、`protocol`、`lock`、`ipc` 四个模块均已补全 `#[cfg(test)]` 单元测试，共 63 个用例，覆盖率 **99%**（117 行中 116 行，`session.rs` 因依赖真实 PTY 不计入）。详见 [architecture.md § 测试策略](architecture.md)。
+
+---
+
 ## Near-term Work
 
 ### v0.2：测试用例 DSL

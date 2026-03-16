@@ -148,3 +148,36 @@ Response (session → client):
 - PTY 读/写使用 `tokio::task::spawn_blocking`，因为 `portable-pty` 的 reader/writer 是同步阻塞 IO
 - 多 task 之间通过 `watch::channel(bool)` 广播取消信号
 - `OutputBuffer` 和 PTY writer 通过 `Arc<Mutex<_>>` 在 task 间共享
+
+---
+
+## 测试策略
+
+### 单元测试（`crates/core`）
+
+`core` crate 的设计目标之一就是"可直接在测试里调用，不需要 CLI 或真实 PTY"。目前四个可单测模块均有完整的 `#[cfg(test)]` 块：
+
+| 模块 | 覆盖率 | 测试内容 |
+|---|---|---|
+| `buffer.rs` | 100% | push/raw_b64 roundtrip、screen_contents 渲染、1MB trim 边界 |
+| `protocol.rs` | 100% | Request/Response 所有变体的 serde 序列化与反序列化 |
+| `lock.rs` | ~98% | 路径生成、write/read roundtrip、heartbeat、scan_active 含错误分支 |
+| `ipc.rs` | 100% | write_frame/read_frame framing、超大帧拒绝、IpcClient 所有分支（含 mock Unix socket server）|
+
+运行方式：
+
+```bash
+cargo test -p core
+```
+
+覆盖率测量（排除 `session.rs`）：
+
+```bash
+cargo tarpaulin -p core --out Stdout
+```
+
+### session.rs — 仅集成测试
+
+`session.rs` 直接调用 `portable-pty` openpty、spawn zsh、`crossterm::terminal::enable_raw_mode`，需要真实 TTY 和 `/bin/zsh`，无法在 CI 的无头环境中单测。
+
+它被排除在 tarpaulin 覆盖率统计之外（见 `.tarpaulin.toml`）。对它的验证通过手动端到端测试，或未来的集成测试框架（v0.2 DSL）完成。
