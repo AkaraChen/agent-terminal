@@ -20,9 +20,13 @@ use crate::{
     protocol::{Request, Response},
 };
 
-/// Entry point: start a PTY session running zsh, then block until the
+/// Entry point: start a PTY session running a shell, then block until the
 /// child exits (or the process is killed).
-pub async fn run_session() -> Result<()> {
+///
+/// # Arguments
+///
+/// * `shell` - Path to the shell executable (e.g., "/bin/zsh", "/bin/bash")
+pub async fn run_session(shell: &str) -> Result<()> {
     // ── 1. Determine terminal size ──────────────────────────────────────
     let (cols, rows) = terminal::size().unwrap_or((220, 50));
     let pty_size = PtySize {
@@ -32,13 +36,13 @@ pub async fn run_session() -> Result<()> {
         pixel_height: 0,
     };
 
-    // ── 2. Open PTY and spawn zsh ───────────────────────────────────────
+    // ── 2. Open PTY and spawn shell ─────────────────────────────────────
     let pty_system = NativePtySystem::default();
     let pty_pair = pty_system
         .openpty(pty_size)
         .context("open PTY")?;
 
-    let mut cmd = CommandBuilder::new("/bin/zsh");
+    let mut cmd = CommandBuilder::new(shell);
     // Give zsh a proper TERM so readline works.
     cmd.env("TERM", "xterm-256color");
 

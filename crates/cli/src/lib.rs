@@ -12,8 +12,12 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
-    /// Start an interactive PTY session (zsh) that can be controlled remotely.
-    Start,
+    /// Start an interactive PTY session that can be controlled remotely.
+    Start {
+        /// Shell to use (default: platform default - /bin/zsh on macOS, /bin/bash on Linux)
+        #[arg(short, long)]
+        shell: Option<String>,
+    },
     /// List all active PTY sessions.
     List,
     /// Write input to a running session.
@@ -38,7 +42,7 @@ pub fn run() -> Result<()> {
         .build()?;
 
     match cli.command {
-        Commands::Start => rt.block_on(commands::start::run()),
+        Commands::Start { shell } => rt.block_on(commands::start::run(shell.as_deref())),
         Commands::List => commands::list::run(),
         Commands::Write { session_id, data } => {
             rt.block_on(commands::write::run(&session_id, &data))

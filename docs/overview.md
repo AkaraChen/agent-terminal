@@ -23,7 +23,10 @@ v0.1：基础 PTY session 管理 + IPC 框架。支持：
 
 ## 平台
 
-**仅支持 macOS**（当前），PTY 系统使用 `portable-pty` crate，shell 为 `/bin/zsh`。
+- **macOS**: 使用 `/bin/zsh` 作为默认 shell
+- **Linux**: 使用 `/bin/bash` 作为默认 shell（实验性支持）
+
+PTY 系统基于 `portable-pty` crate，支持通过 `--shell` 参数指定自定义 shell 路径。
 
 ---
 

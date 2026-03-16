@@ -84,9 +84,12 @@ stop session
 
 session 对订阅者持续推送新写入的 bytes（pty_reader_task 写 buffer 时同时 fan-out 给所有订阅者）。这样测试代码不用轮询，可以用 `recv().await` 等待。
 
-### v0.3：Linux 支持
+### v0.3：Linux 支持 ✅
 
-`portable-pty` 支持 Linux（openpty + exec），理论上只需改 shell 路径（`/bin/bash` 或 `/bin/sh`），以及 lock TTL 相关逻辑不依赖平台。需要在 Linux 上实测。
+- [x] `portable-pty` 支持 Linux（openpty + exec）
+- [x] 平台默认 shell 自动检测（macOS: /bin/zsh, Linux: /bin/bash）
+- [x] `--shell` 参数支持自定义 shell 路径
+- [ ] 需要在 Linux 上实测验证
 
 ### v1.0：跨机器 session（TCP mode）
 

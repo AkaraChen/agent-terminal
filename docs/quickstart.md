@@ -13,15 +13,20 @@ cargo build
 
 ## 基本用法
 
-### 1. 启动一个受管控的 zsh session
+### 1. 启动一个受管控的 shell session
 
 在终端 A 中：
 
 ```bash
+# 使用平台默认 shell（macOS: /bin/zsh, Linux: /bin/bash）
 cargo run -- start
+
+# 或指定自定义 shell
+cargo run -- start --shell /bin/bash
+cargo run -- start -s /bin/zsh
 ```
 
-这会打开一个外观和普通 zsh 完全相同的终端。背后这个进程：
+这会打开一个外观和普通 shell 完全相同的终端。背后这个进程：
 - 持有一个 PTY，zsh 运行在 slave 端
 - 在 `/tmp/agent-terminal/sessions/<uuid>.lock` 写入心跳
 - 在 `/tmp/agent-terminal/sessions/<uuid>.sock` 监听 IPC 连接

@@ -64,9 +64,9 @@ socket_server_task
 ## Session 生命周期
 
 ```
-run_session()
+run_session(shell)
   │
-  ├─ openpty() + spawn zsh
+  ├─ openpty() + spawn shell (default: /bin/zsh on macOS, /bin/bash on Linux)
   ├─ 写 lock 文件 (LockFile)
   ├─ bind UnixListener
   ├─ enable_raw_mode(stdin)
