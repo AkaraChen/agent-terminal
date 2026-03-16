@@ -23,6 +23,7 @@ agent-terminal/               ← Cargo workspace root
           list.rs             ← list 命令
           write.rs            ← write 命令
           dump.rs             ← dump 命令
+          remote.rs           ← remote 命令 (TCP mode)
 ```
 
 **分层原则**：`core` 不知道 clap、不打印东西、不持有 CLI 状态；`cli` 只做"解析参数 → 调 core → 格式化输出"。未来可以在 `core` 上方套 HTTP API 层，或在测试里直接调 core 函数，不受 CLI 层影响。
@@ -88,7 +89,9 @@ run_session(shell)
 
 ## IPC 协议
 
-**Transport**：Unix socket，路径存放在对应 lock 文件的 `socket_path` 字段，套接字权限为 `0600`。
+**Transport**：
+- **Unix socket**：本地进程间通信，路径存放在对应 lock 文件的 `socket_path` 字段，套接字权限为 `0600`。
+- **TCP socket**：跨机器远程访问，需启用 `tcp` feature，支持 TLS 加密和 token 认证。
 
 **Framing**：每个消息由 `[4 字节 u32 LE 长度][JSON 字节流]` 组成。
 
@@ -98,8 +101,9 @@ run_session(shell)
 Request (client → session):
   { "type": "write_input",  "data": "ls\n" }
   { "type": "get_output"  }
-  { "type": "subscribe" }      # Start streaming output
-  { "type": "unsubscribe" }    # Stop streaming output
+  { "type": "subscribe" }          # Start streaming output
+  { "type": "unsubscribe" }        # Stop streaming output
+  { "type": "authenticate", "token": "..." }  # TCP mode auth
 
 Response (session → client):
   { "type": "ok" }

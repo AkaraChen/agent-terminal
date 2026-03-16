@@ -111,12 +111,31 @@ session 对订阅者持续推送新写入的 bytes（pty_reader_task 写 buffer 
 - [x] `--shell` 参数支持自定义 shell 路径
 - [ ] 需要在 Linux 上实测验证
 
-### v1.0：跨机器 session（TCP mode）
+### v1.0：跨机器 session（TCP mode）✅
 
-在服务器端运行 `agent-terminal start`，允许测试 runner 从不同机器通过 TCP 连接。需要：
-- TLS（使用 `rustls`）
-- 认证（token）
-- TCP framing（与 Unix socket framing 相同协议）
+在服务器端运行 `agent-terminal start`，允许测试 runner 从不同机器通过 TCP 连接。
+
+**实现状态：**
+- [x] TCP 服务器 (`crates/core/src/tcp.rs`)，支持 TLS (`rustls`)
+- [x] Token 认证 (`Authenticate` 请求)
+- [x] TCP framing（与 Unix socket 相同协议）
+- [x] CLI `remote` 命令支持跨机器访问
+- [x] 添加单元测试（3个）和协议测试
+
+**使用示例：**
+```bash
+# 在服务器端启动 session
+agent-terminal start
+
+# 从远程机器连接
+agent-terminal remote <addr>:<port> --token <secret> write "ls\n"
+agent-terminal remote <addr>:<port> --token <secret> dump
+```
+
+**编译启用 TCP 支持：**
+```bash
+cargo build --release --features tcp
+```
 
 ---
 
