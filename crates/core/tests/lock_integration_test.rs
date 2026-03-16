@@ -100,7 +100,10 @@ fn test_lock_heartbeat_keeps_session_alive() {
 
     // Should still be alive
     let lock = LockFile::read(&id).unwrap();
-    assert!(lock.is_alive(), "Session should still be alive at 4 seconds");
+    assert!(
+        lock.is_alive(),
+        "Session should still be alive at 4 seconds"
+    );
 
     // Heartbeat to renew
     let mut lock = LockFile::read(&id).unwrap();

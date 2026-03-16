@@ -102,8 +102,8 @@ impl TestRunner {
                     Ok(Response::OutputChunk { raw_b64 }) => {
                         // Decode and append to buffer
                         use base64::Engine;
-                        if let Ok(bytes) = base64::engine::general_purpose::STANDARD
-                            .decode(&raw_b64)
+                        if let Ok(bytes) =
+                            base64::engine::general_purpose::STANDARD.decode(&raw_b64)
                         {
                             if let Ok(text) = String::from_utf8(bytes) {
                                 self.output_buffer.push_str(&text);

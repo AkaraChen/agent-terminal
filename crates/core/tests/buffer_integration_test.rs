@@ -85,7 +85,9 @@ fn test_buffer_1mb_boundary_exact() {
     buf.push(&one_mb);
 
     let raw = buf.raw_b64();
-    let decoded = base64::engine::general_purpose::STANDARD.decode(&raw).unwrap();
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(&raw)
+        .unwrap();
     assert!(decoded.len() <= 1024 * 1024);
 }
 
@@ -98,8 +100,13 @@ fn test_buffer_1mb_boundary_over() {
     buf.push(&data);
 
     let raw = buf.raw_b64();
-    let decoded = base64::engine::general_purpose::STANDARD.decode(&raw).unwrap();
-    assert!(decoded.len() <= 1024 * 1024, "Buffer should be capped at 1MB");
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(&raw)
+        .unwrap();
+    assert!(
+        decoded.len() <= 1024 * 1024,
+        "Buffer should be capped at 1MB"
+    );
 }
 
 #[test]
@@ -153,7 +160,9 @@ fn test_buffer_binary_data() {
     assert!(!raw.is_empty());
 
     // Decoding should give back the original bytes
-    let decoded = base64::engine::general_purpose::STANDARD.decode(&raw).unwrap();
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(&raw)
+        .unwrap();
     assert_eq!(decoded, binary_data);
 }
 
@@ -192,7 +201,10 @@ fn test_buffer_empty_push() {
     let mut buf = OutputBuffer::new(24, 80);
 
     buf.push(b"");
-    assert_eq!(buf.raw_b64(), base64::engine::general_purpose::STANDARD.encode(b""));
+    assert_eq!(
+        buf.raw_b64(),
+        base64::engine::general_purpose::STANDARD.encode(b"")
+    );
     assert_eq!(buf.screen_contents(), "");
 
     buf.push(b"hello");
@@ -231,7 +243,9 @@ fn test_buffer_preserves_order() {
     }
 
     let raw = buf.raw_b64();
-    let decoded = base64::engine::general_purpose::STANDARD.decode(&raw).unwrap();
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(&raw)
+        .unwrap();
     let decoded_str = String::from_utf8_lossy(&decoded);
 
     // Verify order is preserved

@@ -60,7 +60,9 @@ impl OutputBuffer {
             let mut line = String::with_capacity(cols as usize);
             for col in 0..cols {
                 let cell = screen.cell(row, col);
-                let ch = cell.map(|c| c.contents()).unwrap_or_else(|| " ".to_string());
+                let ch = cell
+                    .map(|c| c.contents())
+                    .unwrap_or_else(|| " ".to_string());
                 if ch.is_empty() {
                     line.push(' ');
                 } else {
@@ -161,7 +163,10 @@ mod tests {
         buf.push(&chunk);
         buf.push(&chunk);
         let raw_bytes = STANDARD.decode(buf.raw_b64()).unwrap();
-        assert!(raw_bytes.len() <= 1024 * 1024, "raw buffer must not exceed 1 MB");
+        assert!(
+            raw_bytes.len() <= 1024 * 1024,
+            "raw buffer must not exceed 1 MB"
+        );
     }
 
     #[test]

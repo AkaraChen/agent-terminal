@@ -215,7 +215,10 @@ async fn test_cli_multiple_writes_same_session() {
     // Multiple sequential writes
     let mut client = IpcClient::connect(&socket_path).await.unwrap();
     for i in 0..10 {
-        client.write_input(&format!("command {}\n", i)).await.unwrap();
+        client
+            .write_input(&format!("command {}\n", i))
+            .await
+            .unwrap();
     }
 
     // Verify all commands were recorded

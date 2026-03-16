@@ -47,18 +47,13 @@ pub async fn run_session(shell: &str) -> Result<()> {
 
     // ── 2. Open PTY and spawn shell ─────────────────────────────────────
     let pty_system = NativePtySystem::default();
-    let pty_pair = pty_system
-        .openpty(pty_size)
-        .context("open PTY")?;
+    let pty_pair = pty_system.openpty(pty_size).context("open PTY")?;
 
     let mut cmd = CommandBuilder::new(shell);
     // Give zsh a proper TERM so readline works.
     cmd.env("TERM", "xterm-256color");
 
-    let mut child = pty_pair
-        .slave
-        .spawn_command(cmd)
-        .context("spawn zsh")?;
+    let mut child = pty_pair.slave.spawn_command(cmd).context("spawn zsh")?;
 
     // After spawning we no longer need the slave side in this process.
     drop(pty_pair.slave);
@@ -88,10 +83,7 @@ pub async fn run_session(shell: &str) -> Result<()> {
         .master
         .try_clone_reader()
         .context("clone PTY reader")?;
-    let pty_writer = pty_pair
-        .master
-        .take_writer()
-        .context("take PTY writer")?;
+    let pty_writer = pty_pair.master.take_writer().context("take PTY writer")?;
     let pty_writer = Arc::new(Mutex::new(pty_writer));
 
     // Store master for resize operations
@@ -366,22 +358,20 @@ async fn handle_ipc_client(
                     Some(Response::Ok)
                 }
                 Request::Unsubscribe => Some(Response::Ok),
-                Request::WriteInput { data } => {
-                    match pty_writer.lock() {
-                        Ok(mut w) => {
-                            if w.write_all(data.as_bytes()).is_ok() {
-                                Some(Response::Ok)
-                            } else {
-                                Some(Response::Error {
-                                    message: "write to PTY failed".into(),
-                                })
-                            }
+                Request::WriteInput { data } => match pty_writer.lock() {
+                    Ok(mut w) => {
+                        if w.write_all(data.as_bytes()).is_ok() {
+                            Some(Response::Ok)
+                        } else {
+                            Some(Response::Error {
+                                message: "write to PTY failed".into(),
+                            })
                         }
-                        Err(_) => Some(Response::Error {
-                            message: "PTY writer lock poisoned".into(),
-                        }),
                     }
-                }
+                    Err(_) => Some(Response::Error {
+                        message: "PTY writer lock poisoned".into(),
+                    }),
+                },
                 Request::GetOutput => match buffer.lock() {
                     Ok(buf) => Some(Response::Output {
                         raw_b64: buf.raw_b64(),

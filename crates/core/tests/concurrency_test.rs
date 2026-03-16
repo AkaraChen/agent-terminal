@@ -43,15 +43,22 @@ fn test_concurrent_writes_same_session() {
                                 Ok(Request::GetOutput) => {
                                     let content = buf.lock().unwrap().clone();
                                     let resp = Response::Output {
-                                        raw_b64: base64::engine::general_purpose::STANDARD.encode(content.as_bytes()),
+                                        raw_b64: base64::engine::general_purpose::STANDARD
+                                            .encode(content.as_bytes()),
                                         screen: content,
                                     };
                                     let _ = write_frame(&mut stream, &resp).await;
                                 }
-                                Ok(Request::Subscribe) | Ok(Request::Unsubscribe) | Ok(Request::Authenticate { .. }) => {
-                                    let _ = write_frame(&mut stream, &Response::Error {
-                                        message: "not supported".into(),
-                                    }).await;
+                                Ok(Request::Subscribe)
+                                | Ok(Request::Unsubscribe)
+                                | Ok(Request::Authenticate { .. }) => {
+                                    let _ = write_frame(
+                                        &mut stream,
+                                        &Response::Error {
+                                            message: "not supported".into(),
+                                        },
+                                    )
+                                    .await;
                                 }
                                 Err(_) => break,
                             }
@@ -70,7 +77,10 @@ fn test_concurrent_writes_same_session() {
             handles.push(tokio::spawn(async move {
                 let mut client = IpcClient::connect(&path).await.unwrap();
                 for j in 0..10 {
-                    client.write_input(&format!("client {} msg {}\n", i, j)).await.unwrap();
+                    client
+                        .write_input(&format!("client {} msg {}\n", i, j))
+                        .await
+                        .unwrap();
                 }
             }));
         }
@@ -124,7 +134,8 @@ fn test_concurrent_reads_same_session() {
                                 Ok(Request::GetOutput) => {
                                     let content = buf.lock().unwrap().clone();
                                     let resp = Response::Output {
-                                        raw_b64: base64::engine::general_purpose::STANDARD.encode(content.as_bytes()),
+                                        raw_b64: base64::engine::general_purpose::STANDARD
+                                            .encode(content.as_bytes()),
                                         screen: content,
                                     };
                                     let _ = write_frame(&mut stream, &resp).await;
@@ -217,15 +228,22 @@ fn test_concurrent_write_and_read() {
                                 Ok(Request::GetOutput) => {
                                     let content = buf.lock().unwrap().clone();
                                     let resp = Response::Output {
-                                        raw_b64: base64::engine::general_purpose::STANDARD.encode(content.as_bytes()),
+                                        raw_b64: base64::engine::general_purpose::STANDARD
+                                            .encode(content.as_bytes()),
                                         screen: content,
                                     };
                                     let _ = write_frame(&mut stream, &resp).await;
                                 }
-                                Ok(Request::Subscribe) | Ok(Request::Unsubscribe) | Ok(Request::Authenticate { .. }) => {
-                                    let _ = write_frame(&mut stream, &Response::Error {
-                                        message: "not supported".into(),
-                                    }).await;
+                                Ok(Request::Subscribe)
+                                | Ok(Request::Unsubscribe)
+                                | Ok(Request::Authenticate { .. }) => {
+                                    let _ = write_frame(
+                                        &mut stream,
+                                        &Response::Error {
+                                            message: "not supported".into(),
+                                        },
+                                    )
+                                    .await;
                                 }
                                 Err(_) => break,
                             }
@@ -246,7 +264,10 @@ fn test_concurrent_write_and_read() {
             handles.push(tokio::spawn(async move {
                 let mut client = IpcClient::connect(&path).await.unwrap();
                 for j in 0..5 {
-                    client.write_input(&format!("write {}-{}", i, j)).await.unwrap();
+                    client
+                        .write_input(&format!("write {}-{}", i, j))
+                        .await
+                        .unwrap();
                 }
             }));
         }

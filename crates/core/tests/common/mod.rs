@@ -7,7 +7,10 @@ use tokio::sync::oneshot;
 pub fn temp_socket_path() -> String {
     let temp_dir = std::env::temp_dir();
     let uuid = uuid::Uuid::new_v4();
-    temp_dir.join(format!("test-ipc-{}.sock", uuid)).to_string_lossy().to_string()
+    temp_dir
+        .join(format!("test-ipc-{}.sock", uuid))
+        .to_string_lossy()
+        .to_string()
 }
 
 /// Generate a unique temporary session directory for testing.

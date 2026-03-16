@@ -4,7 +4,10 @@ use anyhow::Result;
 use clap::{Parser, Subcommand};
 
 #[derive(Parser)]
-#[command(name = "agent-terminal", about = "CLI testing framework with PTY session management")]
+#[command(
+    name = "agent-terminal",
+    about = "CLI testing framework with PTY session management"
+)]
 struct Cli {
     #[command(subcommand)]
     command: Commands,
@@ -90,12 +93,13 @@ pub fn run() -> Result<()> {
             rt.block_on(commands::write::run(&session_id, &data))
         }
         Commands::Dump { session_id } => rt.block_on(commands::dump::run(&session_id)),
-        Commands::Test {
-            session_id,
-            action,
-        } => rt.block_on(commands::test::run(&session_id, action)),
-        Commands::Remote { addr, token, action } => {
-            rt.block_on(commands::remote::run(&addr, &token, action))
+        Commands::Test { session_id, action } => {
+            rt.block_on(commands::test::run(&session_id, action))
         }
+        Commands::Remote {
+            addr,
+            token,
+            action,
+        } => rt.block_on(commands::remote::run(&addr, &token, action)),
     }
 }

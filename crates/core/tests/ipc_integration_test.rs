@@ -29,10 +29,7 @@ where
 }
 
 /// Spawn a persistent mock server that can handle multiple connections
-async fn spawn_persistent_mock_server<F, Fut>(
-    socket_path: &str,
-    handler: F,
-) -> oneshot::Sender<()>
+async fn spawn_persistent_mock_server<F, Fut>(socket_path: &str, handler: F) -> oneshot::Sender<()>
 where
     F: Fn(tokio::net::UnixStream) -> Fut + Send + Sync + 'static,
     Fut: std::future::Future<Output = ()> + Send + 'static,
@@ -80,11 +77,12 @@ async fn test_ipc_client_server_roundtrip() {
     .await;
 
     let mut client = IpcClient::connect(&path).await.unwrap();
-    let response = client.send(&Request::WriteInput {
-        data: "hello world".to_string(),
-    })
-    .await
-    .unwrap();
+    let response = client
+        .send(&Request::WriteInput {
+            data: "hello world".to_string(),
+        })
+        .await
+        .unwrap();
 
     assert!(matches!(response, Response::Ok));
 }
@@ -156,7 +154,9 @@ async fn test_ipc_multiple_clients_concurrent() {
                     raw_b64: "test".to_string(),
                     screen: "concurrent".to_string(),
                 },
-                _ => Response::Error { message: "unexpected request".into() },
+                _ => Response::Error {
+                    message: "unexpected request".into(),
+                },
             };
 
             if write_frame(&mut stream, &resp).await.is_err() {
@@ -421,5 +421,8 @@ async fn test_ipc_error_response_propagation() {
     let mut client = IpcClient::connect(&path).await.unwrap();
     let result = client.write_input("test").await;
     assert!(result.is_err());
-    assert!(result.unwrap_err().to_string().contains("custom error message"));
+    assert!(result
+        .unwrap_err()
+        .to_string()
+        .contains("custom error message"));
 }

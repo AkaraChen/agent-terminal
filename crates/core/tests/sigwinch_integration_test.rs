@@ -33,7 +33,9 @@ fn test_buffer_resize_preserves_raw() {
     assert_eq!(raw_before, raw_after);
 
     // Verify we can decode it back
-    let decoded = base64::engine::general_purpose::STANDARD.decode(&raw_after).unwrap();
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(&raw_after)
+        .unwrap();
     assert!(decoded.windows(test_data.len()).any(|w| w == test_data));
 }
 
@@ -50,7 +52,9 @@ fn test_buffer_multiple_resizes() {
 
     // Raw data should still be there
     use base64::Engine;
-    let decoded = base64::engine::general_purpose::STANDARD.decode(buf.raw_b64()).unwrap();
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(buf.raw_b64())
+        .unwrap();
     assert!(decoded.windows(7).any(|w| w == b"content"));
 }
 
@@ -67,7 +71,9 @@ fn test_buffer_resize_with_ansi() {
 
     // Raw data should be preserved - check for the escape sequence bytes
     use base64::Engine;
-    let decoded = base64::engine::general_purpose::STANDARD.decode(buf.raw_b64()).unwrap();
+    let decoded = base64::engine::general_purpose::STANDARD
+        .decode(buf.raw_b64())
+        .unwrap();
     // Check for ESC (0x1b) followed by '['
     assert!(decoded.windows(2).any(|w| w == b"\x1b["));
 }
@@ -97,7 +103,10 @@ fn test_buffer_resize_empty() {
     // Should still be empty
     assert_eq!(buf.screen_contents(), "");
     use base64::Engine;
-    assert_eq!(buf.raw_b64(), base64::engine::general_purpose::STANDARD.encode(b""));
+    assert_eq!(
+        buf.raw_b64(),
+        base64::engine::general_purpose::STANDARD.encode(b"")
+    );
 }
 
 /// Test that screen contents after resize reflects new dimensions
@@ -118,5 +127,9 @@ fn test_buffer_resize_screen_dimensions() {
     let lines: Vec<_> = screen.lines().collect();
 
     // Should have at most 5 lines (the visible rows)
-    assert!(lines.len() <= 5, "Screen should have at most 5 lines after resize, got {}", lines.len());
+    assert!(
+        lines.len() <= 5,
+        "Screen should have at most 5 lines after resize, got {}",
+        lines.len()
+    );
 }

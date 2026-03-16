@@ -184,7 +184,9 @@ fn test_error_lock_file_race_condition() {
     // All should be cleaned up
     let active = LockFile::scan_active();
     for i in 0..10 {
-        let found = active.iter().any(|l| l.session_id == format!("{}-{}", id, i));
+        let found = active
+            .iter()
+            .any(|l| l.session_id == format!("{}-{}", id, i));
         assert!(!found);
     }
 }

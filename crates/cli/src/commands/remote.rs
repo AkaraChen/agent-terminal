@@ -51,10 +51,7 @@ pub async fn run(addr: &str, token: &str, action: RemoteAction) -> Result<()> {
     }
 }
 
-async fn tcp_write_frame<T: serde::Serialize>(
-    stream: &mut TcpStream,
-    value: &T,
-) -> Result<()> {
+async fn tcp_write_frame<T: serde::Serialize>(stream: &mut TcpStream, value: &T) -> Result<()> {
     use tokio::io::AsyncWriteExt;
     let json = serde_json::to_vec(value)?;
     let len = json.len() as u32;

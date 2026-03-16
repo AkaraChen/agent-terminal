@@ -35,15 +35,22 @@ async fn stress_test_rapid_writes() {
                             Ok(Request::GetOutput) => {
                                 let content = buf.lock().await.clone();
                                 let resp = Response::Output {
-                                    raw_b64: base64::engine::general_purpose::STANDARD.encode(content.as_bytes()),
+                                    raw_b64: base64::engine::general_purpose::STANDARD
+                                        .encode(content.as_bytes()),
                                     screen: content,
                                 };
                                 let _ = write_frame(&mut stream, &resp).await;
                             }
-                            Ok(Request::Subscribe) | Ok(Request::Unsubscribe) | Ok(Request::Authenticate { .. }) => {
-                                let _ = write_frame(&mut stream, &Response::Error {
-                                    message: "not supported".into(),
-                                }).await;
+                            Ok(Request::Subscribe)
+                            | Ok(Request::Unsubscribe)
+                            | Ok(Request::Authenticate { .. }) => {
+                                let _ = write_frame(
+                                    &mut stream,
+                                    &Response::Error {
+                                        message: "not supported".into(),
+                                    },
+                                )
+                                .await;
                             }
                             Err(_) => break,
                         }
@@ -146,7 +153,8 @@ async fn stress_test_large_output() {
                         match read_frame::<Request>(&mut stream).await {
                             Ok(Request::GetOutput) => {
                                 let resp = Response::Output {
-                                    raw_b64: base64::engine::general_purpose::STANDARD.encode(data.as_bytes()),
+                                    raw_b64: base64::engine::general_purpose::STANDARD
+                                        .encode(data.as_bytes()),
                                     screen: (*data).clone(),
                                 };
                                 let _ = write_frame(&mut stream, &resp).await;

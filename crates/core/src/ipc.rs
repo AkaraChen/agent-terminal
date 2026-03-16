@@ -98,7 +98,9 @@ mod tests {
     async fn test_write_read_frame_request_roundtrip() {
         let (mut a, mut b) = tokio::io::duplex(1024);
 
-        let req = Request::WriteInput { data: "ls -la\n".to_string() };
+        let req = Request::WriteInput {
+            data: "ls -la\n".to_string(),
+        };
         write_frame(&mut a, &req).await.unwrap();
         drop(a);
 
@@ -145,7 +147,9 @@ mod tests {
     async fn test_write_read_frame_response_error() {
         let (mut a, mut b) = tokio::io::duplex(256);
 
-        let resp = Response::Error { message: "something went wrong".to_string() };
+        let resp = Response::Error {
+            message: "something went wrong".to_string(),
+        };
         write_frame(&mut a, &resp).await.unwrap();
         drop(a);
 
@@ -200,7 +204,9 @@ mod tests {
         let (mut a, mut b) = tokio::io::duplex(4096);
 
         let r1 = Request::GetOutput;
-        let r2 = Request::WriteInput { data: "pwd\n".to_string() };
+        let r2 = Request::WriteInput {
+            data: "pwd\n".to_string(),
+        };
 
         write_frame(&mut a, &r1).await.unwrap();
         write_frame(&mut a, &r2).await.unwrap();
@@ -254,9 +260,14 @@ mod tests {
         let path = temp_socket_path();
         with_mock_server(&path, |mut s| async move {
             let _req: Request = read_frame(&mut s).await.unwrap();
-            write_frame(&mut s, &Response::Error { message: "session dead".to_string() })
-                .await
-                .unwrap();
+            write_frame(
+                &mut s,
+                &Response::Error {
+                    message: "session dead".to_string(),
+                },
+            )
+            .await
+            .unwrap();
         })
         .await;
 
@@ -272,10 +283,13 @@ mod tests {
         with_mock_server(&path, |mut s| async move {
             let _req: Request = read_frame(&mut s).await.unwrap();
             // Return Output instead of Ok — unexpected
-            write_frame(&mut s, &Response::Output {
-                raw_b64: String::new(),
-                screen: String::new(),
-            })
+            write_frame(
+                &mut s,
+                &Response::Output {
+                    raw_b64: String::new(),
+                    screen: String::new(),
+                },
+            )
             .await
             .unwrap();
         })
@@ -292,10 +306,13 @@ mod tests {
         let path = temp_socket_path();
         with_mock_server(&path, |mut s| async move {
             let _req: Request = read_frame(&mut s).await.unwrap();
-            write_frame(&mut s, &Response::Output {
-                raw_b64: "aGVsbG8=".to_string(),
-                screen: "hello screen".to_string(),
-            })
+            write_frame(
+                &mut s,
+                &Response::Output {
+                    raw_b64: "aGVsbG8=".to_string(),
+                    screen: "hello screen".to_string(),
+                },
+            )
             .await
             .unwrap();
         })
@@ -313,9 +330,14 @@ mod tests {
         let path = temp_socket_path();
         with_mock_server(&path, |mut s| async move {
             let _req: Request = read_frame(&mut s).await.unwrap();
-            write_frame(&mut s, &Response::Error { message: "no output".to_string() })
-                .await
-                .unwrap();
+            write_frame(
+                &mut s,
+                &Response::Error {
+                    message: "no output".to_string(),
+                },
+            )
+            .await
+            .unwrap();
         })
         .await;
 

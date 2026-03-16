@@ -9,7 +9,10 @@ fn test_default_shell_platform_specific() {
 
     // All platforms should return an absolute path
     assert!(shell.starts_with('/'), "Shell path should be absolute");
-    assert!(shell.contains('/'), "Shell path should contain directory separator");
+    assert!(
+        shell.contains('/'),
+        "Shell path should contain directory separator"
+    );
 
     // Platform-specific checks
     #[cfg(target_os = "macos")]
@@ -52,8 +55,16 @@ fn test_shell_path_variations() {
     ];
 
     for shell in &valid_shells {
-        assert!(shell.starts_with('/'), "Shell path must be absolute: {}", shell);
-        assert!(!shell.contains(' '), "Shell path should not contain spaces: {}", shell);
+        assert!(
+            shell.starts_with('/'),
+            "Shell path must be absolute: {}",
+            shell
+        );
+        assert!(
+            !shell.contains(' '),
+            "Shell path should not contain spaces: {}",
+            shell
+        );
     }
 }
 

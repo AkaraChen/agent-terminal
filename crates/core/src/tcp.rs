@@ -53,11 +53,7 @@ impl TcpClient {
 }
 
 /// Run a TCP server that accepts remote connections.
-pub async fn run_tcp_server(
-    addr: &str,
-    token: String,
-    socket_path: String,
-) -> Result<()> {
+pub async fn run_tcp_server(addr: &str, token: String, socket_path: String) -> Result<()> {
     let listener = TcpListener::bind(addr).await?;
     println!("TCP server listening on {}", addr);
 
@@ -132,6 +128,9 @@ mod tests {
     #[test]
     fn test_tcp_framing_basic() {
         // Basic unit test for TCP module structure
-        assert_eq!(std::mem::size_of::<TcpClient>(), std::mem::size_of::<TcpStream>());
+        assert_eq!(
+            std::mem::size_of::<TcpClient>(),
+            std::mem::size_of::<TcpStream>()
+        );
     }
 }

@@ -262,7 +262,10 @@ async fn test_dsl_output_buffer_accumulation() {
     let mut runner = TestRunner::connect(session.socket_path()).await.unwrap();
 
     // Wait for first pattern
-    runner.wait_for("line1", Duration::from_secs(1)).await.unwrap();
+    runner
+        .wait_for("line1", Duration::from_secs(1))
+        .await
+        .unwrap();
 
     // Buffer should still contain both lines
     assert!(runner.output_buffer().contains("line2"));
@@ -284,7 +287,10 @@ async fn test_dsl_clear_buffer() {
     let mut runner = TestRunner::connect(session.socket_path()).await.unwrap();
 
     // Wait for and clear buffer
-    runner.wait_for("old", Duration::from_secs(1)).await.unwrap();
+    runner
+        .wait_for("old", Duration::from_secs(1))
+        .await
+        .unwrap();
     runner.clear_buffer();
     assert!(runner.output_buffer().is_empty());
 

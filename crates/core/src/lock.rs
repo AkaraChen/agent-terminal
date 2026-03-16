@@ -47,8 +47,7 @@ impl LockFile {
 
     /// Write (or overwrite) the lock file on disk.
     pub fn write(&self) -> Result<()> {
-        fs::create_dir_all(SESSION_DIR)
-            .context("create session dir")?;
+        fs::create_dir_all(SESSION_DIR).context("create session dir")?;
         let path = Self::path_for(&self.session_id);
         let json = serde_json::to_string(self)?;
         fs::write(path, json).context("write lock file")?;
@@ -64,8 +63,8 @@ impl LockFile {
     /// Read a lock file from disk.
     pub fn read(session_id: &str) -> Result<Self> {
         let path = Self::path_for(session_id);
-        let data = fs::read_to_string(&path)
-            .with_context(|| format!("read lock file {:?}", path))?;
+        let data =
+            fs::read_to_string(&path).with_context(|| format!("read lock file {:?}", path))?;
         let lock: LockFile = serde_json::from_str(&data)?;
         Ok(lock)
     }
@@ -297,7 +296,10 @@ mod tests {
 
         let active = LockFile::scan_active();
         let found = active.iter().any(|l| l.session_id == id);
-        assert!(found, "freshly written session should appear in scan_active");
+        assert!(
+            found,
+            "freshly written session should appear in scan_active"
+        );
 
         lock.remove();
     }
@@ -333,12 +335,18 @@ mod tests {
     fn test_scan_active_ignores_malformed_json_lock_file() {
         std::fs::create_dir_all(SESSION_DIR).unwrap();
         // A .lock file with invalid JSON triggers the serde error branch.
-        let bad_path = format!("{}/malformed-test-{}.lock", SESSION_DIR, uuid::Uuid::new_v4());
+        let bad_path = format!(
+            "{}/malformed-test-{}.lock",
+            SESSION_DIR,
+            uuid::Uuid::new_v4()
+        );
         std::fs::write(&bad_path, "not valid json {{{").unwrap();
 
         // Must not panic; malformed entry is skipped.
         let active = LockFile::scan_active();
-        let found = active.iter().any(|l| l.socket_path.contains("malformed-test"));
+        let found = active
+            .iter()
+            .any(|l| l.socket_path.contains("malformed-test"));
         assert!(!found);
 
         let _ = std::fs::remove_file(&bad_path);

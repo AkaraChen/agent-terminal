@@ -193,12 +193,22 @@ async fn test_subscribe_receives_output_chunks() {
     assert!(matches!(resp, Response::Ok), "Subscribe should return Ok");
 
     // Write some data (should trigger broadcast)
-    write_frame(&mut stream, &Request::WriteInput { data: "hello".to_string() }).await.unwrap();
+    write_frame(
+        &mut stream,
+        &Request::WriteInput {
+            data: "hello".to_string(),
+        },
+    )
+    .await
+    .unwrap();
     let _: Response = read_frame(&mut stream).await.unwrap(); // Ok response
 
     // Read the OutputChunk response
     let chunk_resp = timeout(Duration::from_secs(1), read_frame::<Response>(&mut stream)).await;
-    assert!(chunk_resp.is_ok(), "Should receive output chunk within timeout");
+    assert!(
+        chunk_resp.is_ok(),
+        "Should receive output chunk within timeout"
+    );
 
     let chunk = chunk_resp.unwrap().unwrap();
     match chunk {
@@ -222,23 +232,42 @@ async fn test_unsubscribe_stops_receiving_chunks() {
     assert!(matches!(resp, Response::Ok));
 
     // Write data
-    write_frame(&mut stream, &Request::WriteInput { data: "test1".to_string() }).await.unwrap();
+    write_frame(
+        &mut stream,
+        &Request::WriteInput {
+            data: "test1".to_string(),
+        },
+    )
+    .await
+    .unwrap();
     let _: Response = read_frame(&mut stream).await.unwrap(); // Ok response
 
     // Receive chunk
-    let chunk = timeout(Duration::from_millis(500), read_frame::<Response>(&mut stream))
-        .await
-        .unwrap()
-        .unwrap();
+    let chunk = timeout(
+        Duration::from_millis(500),
+        read_frame::<Response>(&mut stream),
+    )
+    .await
+    .unwrap()
+    .unwrap();
     assert!(matches!(chunk, Response::OutputChunk { .. }));
 
     // Unsubscribe
-    write_frame(&mut stream, &Request::Unsubscribe).await.unwrap();
+    write_frame(&mut stream, &Request::Unsubscribe)
+        .await
+        .unwrap();
     let resp: Response = read_frame(&mut stream).await.unwrap();
     assert!(matches!(resp, Response::Ok));
 
     // Write more data
-    write_frame(&mut stream, &Request::WriteInput { data: "test2".to_string() }).await.unwrap();
+    write_frame(
+        &mut stream,
+        &Request::WriteInput {
+            data: "test2".to_string(),
+        },
+    )
+    .await
+    .unwrap();
     let resp: Response = read_frame(&mut stream).await.unwrap(); // Should be Ok, not OutputChunk
     assert!(matches!(resp, Response::Ok));
 
@@ -254,24 +283,41 @@ async fn test_multiple_clients_can_subscribe() {
     let mut stream2 = connect_client(&session.socket_path).await;
 
     // Both subscribe
-    write_frame(&mut stream1, &Request::Subscribe).await.unwrap();
-    write_frame(&mut stream2, &Request::Subscribe).await.unwrap();
+    write_frame(&mut stream1, &Request::Subscribe)
+        .await
+        .unwrap();
+    write_frame(&mut stream2, &Request::Subscribe)
+        .await
+        .unwrap();
     let _: Response = read_frame(&mut stream1).await.unwrap();
     let _: Response = read_frame(&mut stream2).await.unwrap();
 
     // Write data from client1
-    write_frame(&mut stream1, &Request::WriteInput { data: "broadcast".to_string() }).await.unwrap();
+    write_frame(
+        &mut stream1,
+        &Request::WriteInput {
+            data: "broadcast".to_string(),
+        },
+    )
+    .await
+    .unwrap();
     let _: Response = read_frame(&mut stream1).await.unwrap(); // Ok response
 
     // Both should receive the chunk
-    let chunk1 = timeout(Duration::from_millis(500), read_frame::<Response>(&mut stream1))
-        .await
-        .unwrap()
-        .unwrap();
-    let chunk2 = timeout(Duration::from_millis(500), read_frame::<Response>(&mut stream2))
-        .await
-        .unwrap()
-        .unwrap();
+    let chunk1 = timeout(
+        Duration::from_millis(500),
+        read_frame::<Response>(&mut stream1),
+    )
+    .await
+    .unwrap()
+    .unwrap();
+    let chunk2 = timeout(
+        Duration::from_millis(500),
+        read_frame::<Response>(&mut stream2),
+    )
+    .await
+    .unwrap()
+    .unwrap();
 
     assert!(matches!(chunk1, Response::OutputChunk { .. }));
     assert!(matches!(chunk2, Response::OutputChunk { .. }));
