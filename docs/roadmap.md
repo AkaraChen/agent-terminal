@@ -109,7 +109,12 @@ session 对订阅者持续推送新写入的 bytes（pty_reader_task 写 buffer 
 - [x] `portable-pty` 支持 Linux（openpty + exec）
 - [x] 平台默认 shell 自动检测（macOS: /bin/zsh, Linux: /bin/bash）
 - [x] `--shell` 参数支持自定义 shell 路径
-- [ ] 需要在 Linux 上实测验证
+- [x] GitHub Actions CI 在 Linux 上自动测试
+
+**验证方式：**
+- CI 在 `ubuntu-latest` 上构建和运行单元测试
+- 编译验证包含 TCP feature 的构建
+- shell 路径检测逻辑通过测试验证
 
 ### v1.0：跨机器 session（TCP mode）✅
 
