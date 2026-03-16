@@ -15,13 +15,16 @@
 
 > 注意：replay raw buffer 会损失很多 ANSI 状态（比如已经发过的清屏命令），不是完美方案。vt100 库本身不提供 resize API。
 
-### spawn_blocking cancel 不干净
+### spawn_blocking cancel 优化 ✅
 
-`stdin_relay_task` 和 `pty_reader_task` 在 `spawn_blocking` 线程里通过轮询 `cancel_rx.borrow()` 检测取消。但这两个任务都阻塞在 `read()` 调用上，如果 read 没有返回，cancel 检查不到。
+`stdin_relay_task` 在 `spawn_blocking` 线程里通过轮询 `cancel_rx.borrow()` 检测取消。但任务阻塞在 `read()` 调用上，如果 read 没有返回，cancel 检查不到。
 
-实际上 zsh 退出后 PTY master 会关闭，`pty_reader` 的 `read()` 会返回 0/Error，任务自然退出。`stdin_relay` 在 zsh 退出后也会因为后续写入 PTY writer 失败而退出。所以这在实践中问题不大，只是不够优雅。
+**修复实现**：
+- [x] 使用 `crossterm::event::poll` 带 100ms 超时读取 stdin
+- [x] 超时后循环检查 cancel 信号，实现快速响应
+- [x] `pty_reader_task` 的阻塞问题在 zsh 退出后会自然解决（PTY 关闭），无需修改
 
-**修复方向**：对 stdin 读取可以用 `crossterm::event::poll` 带超时，周期性检查 cancel 信号。
+> 注意：pty_reader 在 zsh 退出后会因为 PTY master 关闭而自然退出，这是预期行为。
 
 ---
 

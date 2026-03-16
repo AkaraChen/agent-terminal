@@ -1,17 +1,21 @@
 use std::{
-    io::{Read, Write},
+    io::Write,
     os::unix::fs::PermissionsExt,
     sync::{Arc, Mutex},
+    time::Duration as StdDuration,
 };
 
 use anyhow::{Context, Result};
-use crossterm::terminal;
+use crossterm::{event, terminal};
 use portable_pty::{CommandBuilder, MasterPty, NativePtySystem, PtySize, PtySystem};
+
+/// Poll interval for checking cancel signal in blocking tasks.
+const CANCEL_POLL_INTERVAL: StdDuration = StdDuration::from_millis(100);
 use tokio::{
     net::{UnixListener, UnixStream},
     signal::unix::{signal, SignalKind},
     sync::{broadcast, watch},
-    time::{interval, Duration},
+    time::{interval, Duration as TokioDuration},
 };
 
 use crate::{
@@ -105,7 +109,7 @@ pub async fn run_session(shell: &str) -> Result<()> {
     let session_id_hb = session_id.clone();
     let cancel_rx_hb = cancel_rx.clone();
     tokio::spawn(async move {
-        let mut ticker = interval(Duration::from_secs(2));
+        let mut ticker = interval(TokioDuration::from_secs(2));
         let mut cancel = cancel_rx_hb;
         loop {
             tokio::select! {
@@ -177,26 +181,47 @@ pub async fn run_session(shell: &str) -> Result<()> {
         }
     });
 
-    // 7d. Stdin relay: copy raw stdin → PTY master writer.
+    // 7d. Stdin relay: copy raw stdin → PTY master writer (with cancel polling).
     let writer_for_stdin = Arc::clone(&pty_writer);
     let cancel_rx_stdin = cancel_rx.clone();
     tokio::task::spawn_blocking(move || {
-        let stdin = std::io::stdin();
-        let mut stdin = stdin.lock();
         let cancel = cancel_rx_stdin;
-        let mut byte = [0u8; 1];
         loop {
             if *cancel.borrow() {
                 break;
             }
-            match stdin.read(&mut byte) {
-                Ok(0) => break,
-                Ok(_) => {
-                    if let Ok(mut w) = writer_for_stdin.lock() {
-                        let _ = w.write_all(&byte);
+            // Use crossterm poll to check for input with timeout, allowing periodic cancel checks
+            match event::poll(CANCEL_POLL_INTERVAL) {
+                Ok(true) => {
+                    // Input available, read it
+                    if let Ok(event::Event::Key(key_event)) = event::read() {
+                        if let event::KeyCode::Char(c) = key_event.code {
+                            let byte = c as u8;
+                            if let Ok(mut w) = writer_for_stdin.lock() {
+                                if w.write_all(&[byte]).is_err() {
+                                    break;
+                                }
+                            }
+                        } else if key_event.code == event::KeyCode::Enter {
+                            if let Ok(mut w) = writer_for_stdin.lock() {
+                                if w.write_all(b"\n").is_err() {
+                                    break;
+                                }
+                            }
+                        } else if key_event.code == event::KeyCode::Backspace {
+                            if let Ok(mut w) = writer_for_stdin.lock() {
+                                if w.write_all(b"\x7f").is_err() {
+                                    break;
+                                }
+                            }
+                        }
                     }
                 }
-                Err(_) => break,
+                Ok(false) => {
+                    // Timeout, loop back to check cancel signal
+                    continue;
+                }
+                Err(_) => break, // Error polling, exit
             }
         }
     });

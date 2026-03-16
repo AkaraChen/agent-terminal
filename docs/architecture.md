@@ -187,6 +187,20 @@ pty_reader_task
 - 多 task 之间通过 `watch::channel(bool)` 广播取消信号
 - `OutputBuffer` 和 PTY writer 通过 `Arc<Mutex<_>>` 在 task 间共享
 
+### spawn_blocking 任务取消
+
+`stdin_relay_task` 使用 `crossterm::event::poll` 带 100ms 超时读取输入，超时后检查 `cancel` 信号，实现快速干净的取消：
+
+```
+stdin_relay_task (spawn_blocking)
+  │
+  ├─► event::poll(100ms timeout) ──► 有输入? 读取并转发到 PTY
+  │                                  超时? 检查 cancel 信号
+  └─► cancel == true ? 退出
+```
+
+`pty_reader_task` 在 zsh 退出后会因 PTY master 关闭而自然退出（`read()` 返回 0 或 Error），无需额外处理。
+
 ---
 
 ## 测试策略
