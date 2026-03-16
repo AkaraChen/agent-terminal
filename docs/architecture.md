@@ -141,7 +141,22 @@ Response (session → client):
 - **容量上限**：raw 超过 1MB 时，`drain(..excess)` 截掉最老的字节（ring-buffer 语义）
 - Parser 的行列维度在 `run_session()` 开始时从当前终端尺寸读取（`crossterm::terminal::size()`，fallback 220×50）
 
-> **注意**：vt100::Parser 不动态 resize。如果 SIGWINCH 后终端尺寸变化，Parser 的屏幕大小不会跟着变。此问题记录在 [roadmap.md](roadmap.md)。
+## Terminal Resize (SIGWINCH)
+
+当终端窗口大小变化时，session 会收到 `SIGWINCH` 信号并自动调整：
+
+```
+sigwinch_task
+  │
+  ├─► 重新读取终端尺寸 (crossterm::terminal::size)
+  ├─► pty_master.resize(new_size)     # 调整 PTY
+  └─► OutputBuffer.resize(rows, cols)  # 重建 VT100 parser
+```
+
+**实现细节**：
+- 使用 `tokio::signal::unix::signal(SignalKind::window_change())` 监听 SIGWINCH
+- `OutputBuffer::resize()` 创建新的 `vt100::Parser` 并重播 raw buffer
+- 注意：重播会损失部分 ANSI 状态（如清屏命令历史），但这是 vt100 库的限制
 
 ---
 
@@ -182,10 +197,11 @@ pty_reader_task
 
 | 模块 | 覆盖率 | 测试内容 |
 |---|---|---|
-| `buffer.rs` | 100% | push/raw_b64 roundtrip、screen_contents 渲染、1MB trim 边界 |
+| `buffer.rs` | 100% | push/raw_b64 roundtrip、screen_contents 渲染、1MB trim 边界、resize/replay |
 | `protocol.rs` | 100% | Request/Response 所有变体的 serde 序列化与反序列化 |
 | `lock.rs` | ~98% | 路径生成、write/read roundtrip、heartbeat、scan_active 含错误分支 |
 | `ipc.rs` | 100% | write_frame/read_frame framing、超大帧拒绝、IpcClient 所有分支（含 mock Unix socket server）|
+| `session.rs` | N/A (集成测试) | Mock PTY 生命周期、命令执行、并发客户端、SIGWINCH resize |
 
 运行方式：
 

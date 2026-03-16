@@ -38,6 +38,17 @@ impl OutputBuffer {
         STANDARD.encode(&self.raw)
     }
 
+    /// Resize the VT100 parser to new dimensions.
+    /// This creates a new parser and replays the current raw buffer.
+    /// Note: replaying raw buffer will lose some ANSI state (like previous clear-screen commands),
+    /// but it's the best we can do since vt100 library doesn't support resize.
+    pub fn resize(&mut self, rows: u16, cols: u16) {
+        let mut new_parser = vt100::Parser::new(rows, cols, 0);
+        // Replay the raw buffer into the new parser
+        new_parser.process(&self.raw);
+        self.parser = new_parser;
+    }
+
     /// Return a plain-text rendering of the current VT100 screen state.
     /// Each row is separated by '\n'; trailing spaces on each row are trimmed.
     pub fn screen_contents(&self) -> String {
@@ -173,5 +184,40 @@ mod tests {
         buf.push(b"\x00\x01\x02\xff\xfe");
         let b64 = buf.raw_b64();
         assert!(STANDARD.decode(&b64).is_ok());
+    }
+
+    #[test]
+    fn test_resize_changes_dimensions() {
+        let mut buf = OutputBuffer::new(24, 80);
+        buf.push(b"hello world\r\nline 2");
+
+        // Resize to smaller dimensions
+        buf.resize(10, 40);
+
+        // Content should still be accessible
+        let screen = buf.screen_contents();
+        assert!(screen.contains("hello") || screen.contains("world"));
+    }
+
+    #[test]
+    fn test_resize_preserves_raw_bytes() {
+        let mut buf = OutputBuffer::new(24, 80);
+        buf.push(b"test data 123");
+
+        let raw_before = buf.raw_b64();
+        buf.resize(30, 100);
+        let raw_after = buf.raw_b64();
+
+        // Raw bytes should be preserved after resize
+        assert_eq!(raw_before, raw_after);
+    }
+
+    #[test]
+    fn test_resize_empty_buffer() {
+        let mut buf = OutputBuffer::new(24, 80);
+        // Resize without any data
+        buf.resize(10, 40);
+        assert_eq!(buf.screen_contents(), "");
+        assert_eq!(buf.raw_b64(), STANDARD.encode(b""));
     }
 }

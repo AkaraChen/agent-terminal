@@ -2,14 +2,16 @@
 
 ## Known Issues
 
-### SIGWINCH / Terminal Resize
+### SIGWINCH / Terminal Resize ✅
 
 `vt100::Parser` 在 session 启动时以当前终端尺寸初始化（fallback: 220×50）。如果用户在 session 运行期间 resize 终端，vt100 parser 的屏幕尺寸不会跟着变，导致 `dump` 命令的屏幕快照可能列数错误。
 
-**修复方向**：监听 `SIGWINCH`（`tokio::signal::unix::signal(SignalKind::window_change())`），收到信号后：
-1. 重新读取终端尺寸
-2. 调 `pty_pair.master.resize(new_size)`
-3. 重建 `vt100::Parser`（用新尺寸，并 replay 当前 raw buffer）
+**修复实现**：
+- [x] 监听 `SIGWINCH`（`tokio::signal::unix::signal(SignalKind::window_change())`）
+- [x] 收到信号后重新读取终端尺寸
+- [x] 调用 `pty_pair.master.resize(new_size)` 调整 PTY
+- [x] 重建 `vt100::Parser`（用新尺寸，并 replay 当前 raw buffer）
+- [x] 添加 `OutputBuffer::resize()` 方法和单元测试
 
 > 注意：replay raw buffer 会损失很多 ANSI 状态（比如已经发过的清屏命令），不是完美方案。vt100 库本身不提供 resize API。
 

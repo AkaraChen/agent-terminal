@@ -6,9 +6,10 @@ use std::{
 
 use anyhow::{Context, Result};
 use crossterm::terminal;
-use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem};
+use portable_pty::{CommandBuilder, MasterPty, NativePtySystem, PtySize, PtySystem};
 use tokio::{
     net::{UnixListener, UnixStream},
+    signal::unix::{signal, SignalKind},
     sync::{broadcast, watch},
     time::{interval, Duration},
 };
@@ -88,6 +89,9 @@ pub async fn run_session(shell: &str) -> Result<()> {
         .take_writer()
         .context("take PTY writer")?;
     let pty_writer = Arc::new(Mutex::new(pty_writer));
+
+    // Store master for resize operations
+    let pty_master = Arc::new(Mutex::new(pty_pair.master));
 
     // ── 6. Raw stdin ────────────────────────────────────────────────────
     terminal::enable_raw_mode().context("enable raw mode")?;
@@ -193,6 +197,42 @@ pub async fn run_session(shell: &str) -> Result<()> {
                     }
                 }
                 Err(_) => break,
+            }
+        }
+    });
+
+    // 7e. SIGWINCH handler: resize PTY when terminal size changes.
+    let pty_master_resize = Arc::clone(&pty_master);
+    let buffer_resize = Arc::clone(&buffer);
+    let cancel_rx_resize = cancel_rx.clone();
+    tokio::spawn(async move {
+        let mut sigwinch = match signal(SignalKind::window_change()) {
+            Ok(s) => s,
+            Err(_) => return, // Signal not available on this platform
+        };
+        let mut cancel = cancel_rx_resize;
+        loop {
+            tokio::select! {
+                _ = sigwinch.recv() => {
+                    // Terminal size changed, resize PTY and buffer
+                    if let Ok((new_cols, new_rows)) = terminal::size() {
+                        let new_size = PtySize {
+                            rows: new_rows,
+                            cols: new_cols,
+                            pixel_width: 0,
+                            pixel_height: 0,
+                        };
+                        // Resize PTY master
+                        if let Ok(master) = pty_master_resize.lock() {
+                            let _ = master.resize(new_size);
+                        }
+                        // Resize output buffer parser
+                        if let Ok(mut buf) = buffer_resize.lock() {
+                            buf.resize(new_rows, new_cols);
+                        }
+                    }
+                }
+                _ = cancel.changed() => break,
             }
         }
     });
