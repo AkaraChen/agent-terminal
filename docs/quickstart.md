@@ -70,7 +70,20 @@ cargo run -- dump 550e84
 
 输出 session 当前 vt100 屏幕的纯文本渲染，相当于截图。
 
-### 5. Session 结束
+### 5. DSL 测试命令
+
+使用 test 命令执行测试 DSL：
+
+```bash
+# 等待输出中出现指定模式（默认超时 5 秒）
+cargo run -- test 550e84 wait-for "$ "
+cargo run -- test 550e84 wait-for "hello" --timeout 10
+
+# 断言屏幕包含指定文本
+cargo run -- test 550e84 assert-contains "hello world"
+```
+
+### 6. Session 结束
 
 在终端 A 中输入 `exit` 或按 `Ctrl+D` 退出 zsh。进程会自动清理 lock 文件和 socket 文件。
 
