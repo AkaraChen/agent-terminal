@@ -1,0 +1,6 @@
+[default]
+# session.rs wires together the PTY, zsh, Unix socket and async tasks.
+# It requires a real TTY, a live zsh process and OS-level PTY primitives —
+# impossible to unit-test without a full integration harness.
+# Exclude it so the coverage number reflects testable logic only.
+exclude-files = ["crates/core/src/session.rs"]

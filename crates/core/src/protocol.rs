@@ -25,3 +25,131 @@ pub enum Response {
         message: String,
     },
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    // ── Request serialization ────────────────────────────────────────────
+
+    #[test]
+    fn test_write_input_serializes_type_tag() {
+        let req = Request::WriteInput { data: "ls\n".to_string() };
+        let json = serde_json::to_string(&req).unwrap();
+        assert!(json.contains("\"type\":\"write_input\""), "json = {json}");
+    }
+
+    #[test]
+    fn test_write_input_serializes_data() {
+        let req = Request::WriteInput { data: "echo hi\n".to_string() };
+        let json = serde_json::to_string(&req).unwrap();
+        assert!(json.contains("\"data\":\"echo hi\\n\""), "json = {json}");
+    }
+
+    #[test]
+    fn test_get_output_serializes_type_tag() {
+        let req = Request::GetOutput;
+        let json = serde_json::to_string(&req).unwrap();
+        assert!(json.contains("\"type\":\"get_output\""), "json = {json}");
+    }
+
+    // ── Request deserialization ──────────────────────────────────────────
+
+    #[test]
+    fn test_write_input_deserializes() {
+        let json = r#"{"type":"write_input","data":"echo hello\n"}"#;
+        let req: Request = serde_json::from_str(json).unwrap();
+        match req {
+            Request::WriteInput { data } => assert_eq!(data, "echo hello\n"),
+            _ => panic!("expected WriteInput"),
+        }
+    }
+
+    #[test]
+    fn test_get_output_deserializes() {
+        let json = r#"{"type":"get_output"}"#;
+        let req: Request = serde_json::from_str(json).unwrap();
+        assert!(matches!(req, Request::GetOutput));
+    }
+
+    // ── Request clone + debug ────────────────────────────────────────────
+
+    #[test]
+    fn test_request_clone_write_input() {
+        let req = Request::WriteInput { data: "test".to_string() };
+        let cloned = req.clone();
+        match cloned {
+            Request::WriteInput { data } => assert_eq!(data, "test"),
+            _ => panic!("expected WriteInput"),
+        }
+    }
+
+    #[test]
+    fn test_request_debug_is_not_empty() {
+        let s = format!("{:?}", Request::GetOutput);
+        assert!(!s.is_empty());
+    }
+
+    // ── Response serialization roundtrip ────────────────────────────────
+
+    #[test]
+    fn test_response_ok_roundtrip() {
+        let resp = Response::Ok;
+        let json = serde_json::to_string(&resp).unwrap();
+        assert!(json.contains("\"type\":\"ok\""), "json = {json}");
+        let back: Response = serde_json::from_str(&json).unwrap();
+        assert!(matches!(back, Response::Ok));
+    }
+
+    #[test]
+    fn test_response_output_roundtrip() {
+        let resp = Response::Output {
+            raw_b64: "aGVsbG8=".to_string(),
+            screen: "hello".to_string(),
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        let back: Response = serde_json::from_str(&json).unwrap();
+        match back {
+            Response::Output { raw_b64, screen } => {
+                assert_eq!(raw_b64, "aGVsbG8=");
+                assert_eq!(screen, "hello");
+            }
+            _ => panic!("expected Output, got something else"),
+        }
+    }
+
+    #[test]
+    fn test_response_error_roundtrip() {
+        let resp = Response::Error { message: "session not found".to_string() };
+        let json = serde_json::to_string(&resp).unwrap();
+        let back: Response = serde_json::from_str(&json).unwrap();
+        match back {
+            Response::Error { message } => assert_eq!(message, "session not found"),
+            _ => panic!("expected Error"),
+        }
+    }
+
+    #[test]
+    fn test_response_clone() {
+        let resp = Response::Error { message: "oops".to_string() };
+        let cloned = resp.clone();
+        match cloned {
+            Response::Error { message } => assert_eq!(message, "oops"),
+            _ => panic!("expected Error"),
+        }
+    }
+
+    #[test]
+    fn test_response_error_type_tag() {
+        let resp = Response::Error { message: "err".to_string() };
+        let json = serde_json::to_string(&resp).unwrap();
+        assert!(json.contains("\"type\":\"error\""), "json = {json}");
+    }
+
+    #[test]
+    fn test_response_output_type_tag() {
+        let resp = Response::Output { raw_b64: String::new(), screen: String::new() };
+        let json = serde_json::to_string(&resp).unwrap();
+        assert!(json.contains("\"type\":\"output\""), "json = {json}");
+    }
+}

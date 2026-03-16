@@ -65,3 +65,113 @@ impl OutputBuffer {
         lines.join("\n")
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use base64::engine::general_purpose::STANDARD;
+
+    #[test]
+    fn test_new_empty_buffer() {
+        let buf = OutputBuffer::new(24, 80);
+        assert_eq!(buf.raw_b64(), STANDARD.encode(b""));
+        assert_eq!(buf.screen_contents(), "");
+    }
+
+    #[test]
+    fn test_push_raw_bytes_roundtrip() {
+        let mut buf = OutputBuffer::new(24, 80);
+        buf.push(b"hello");
+        let decoded = STANDARD.decode(buf.raw_b64()).unwrap();
+        assert_eq!(decoded, b"hello");
+    }
+
+    #[test]
+    fn test_push_accumulates_raw_bytes() {
+        let mut buf = OutputBuffer::new(24, 80);
+        buf.push(b"foo");
+        buf.push(b"bar");
+        let decoded = STANDARD.decode(buf.raw_b64()).unwrap();
+        assert_eq!(decoded, b"foobar");
+    }
+
+    #[test]
+    fn test_push_empty_slice_is_noop() {
+        let mut buf = OutputBuffer::new(24, 80);
+        buf.push(b"");
+        assert_eq!(buf.raw_b64(), STANDARD.encode(b""));
+        assert_eq!(buf.screen_contents(), "");
+    }
+
+    #[test]
+    fn test_screen_contents_plain_text() {
+        let mut buf = OutputBuffer::new(24, 80);
+        buf.push(b"hello world");
+        let screen = buf.screen_contents();
+        assert!(screen.contains("hello world"));
+    }
+
+    #[test]
+    fn test_screen_contents_no_trailing_newline() {
+        let mut buf = OutputBuffer::new(24, 80);
+        buf.push(b"hi");
+        let screen = buf.screen_contents();
+        // Trailing empty rows should be dropped; result should not end with \n
+        assert!(!screen.ends_with('\n'));
+    }
+
+    #[test]
+    fn test_screen_contents_multiline() {
+        let mut buf = OutputBuffer::new(24, 80);
+        // Write two lines separated by CR+LF (PTY convention)
+        buf.push(b"line1\r\nline2");
+        let screen = buf.screen_contents();
+        assert!(screen.contains("line1"));
+        assert!(screen.contains("line2"));
+    }
+
+    #[test]
+    fn test_screen_contents_trailing_spaces_trimmed() {
+        let mut buf = OutputBuffer::new(24, 80);
+        // vt100 fills unused cells with spaces; screen_contents must trim them.
+        buf.push(b"x");
+        let screen = buf.screen_contents();
+        // The first (and only) row should be just "x", not "x" padded to 80 chars.
+        let first_line = screen.lines().next().unwrap_or("");
+        assert_eq!(first_line, "x");
+    }
+
+    #[test]
+    fn test_1mb_trim_keeps_at_most_1mb() {
+        let mut buf = OutputBuffer::new(24, 80);
+        // Push 1.5 MB total
+        let chunk = vec![b'A'; 512 * 1024]; // 512 KB
+        buf.push(&chunk);
+        buf.push(&chunk);
+        buf.push(&chunk);
+        let raw_bytes = STANDARD.decode(buf.raw_b64()).unwrap();
+        assert!(raw_bytes.len() <= 1024 * 1024, "raw buffer must not exceed 1 MB");
+    }
+
+    #[test]
+    fn test_1mb_trim_retains_most_recent_data() {
+        let mut buf = OutputBuffer::new(24, 80);
+        // Push 1 MB of 'A' then another 512 KB of 'B'
+        let ones = vec![b'A'; 1024 * 1024];
+        let twos = vec![b'B'; 512 * 1024];
+        buf.push(&ones);
+        buf.push(&twos);
+        let raw_bytes = STANDARD.decode(buf.raw_b64()).unwrap();
+        // The tail should be the 'B' data
+        let tail = &raw_bytes[raw_bytes.len() - 512 * 1024..];
+        assert!(tail.iter().all(|&b| b == b'B'));
+    }
+
+    #[test]
+    fn test_raw_b64_is_valid_base64() {
+        let mut buf = OutputBuffer::new(24, 80);
+        buf.push(b"\x00\x01\x02\xff\xfe");
+        let b64 = buf.raw_b64();
+        assert!(STANDARD.decode(&b64).is_ok());
+    }
+}
