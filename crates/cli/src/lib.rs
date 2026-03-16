@@ -32,6 +32,30 @@ enum Commands {
         /// Session ID (or unique prefix) to target.
         session_id: String,
     },
+    /// Run a DSL test command against a session.
+    Test {
+        /// Session ID (or unique prefix) to target.
+        session_id: String,
+        #[command(subcommand)]
+        action: TestAction,
+    },
+}
+
+#[derive(Subcommand)]
+pub enum TestAction {
+    /// Wait for a pattern to appear in the output.
+    WaitFor {
+        /// Pattern to wait for.
+        pattern: String,
+        /// Timeout in seconds (default: 5).
+        #[arg(short, long)]
+        timeout: Option<u64>,
+    },
+    /// Assert that the screen contains the given text.
+    AssertContains {
+        /// Text that should be present on screen.
+        text: String,
+    },
 }
 
 pub fn run() -> Result<()> {
@@ -48,5 +72,9 @@ pub fn run() -> Result<()> {
             rt.block_on(commands::write::run(&session_id, &data))
         }
         Commands::Dump { session_id } => rt.block_on(commands::dump::run(&session_id)),
+        Commands::Test {
+            session_id,
+            action,
+        } => rt.block_on(commands::test::run(&session_id, action)),
     }
 }

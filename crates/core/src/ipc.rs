@@ -8,7 +8,9 @@ use crate::protocol::{Request, Response};
 
 /// Length-prefixed JSON framing: [u32 LE length][JSON bytes].
 pub struct IpcClient {
-    stream: UnixStream,
+    /// The underlying Unix stream for IPC communication.
+    /// Public to allow direct reading/writing for advanced use cases like streaming.
+    pub stream: UnixStream,
 }
 
 impl IpcClient {

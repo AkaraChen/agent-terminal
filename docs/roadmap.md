@@ -58,7 +58,7 @@
 
 ## Near-term Work
 
-### v0.2：测试用例 DSL
+### v0.2：测试用例 DSL ✅
 
 支持写脚本描述交互序列，例如：
 
@@ -71,13 +71,21 @@ assert_screen contains "hello"
 stop session
 ```
 
-这需要：
-- `wait_for(pattern, timeout)` — 在 OutputBuffer 上阻塞轮询（或 condvar 通知）
-- `assert_screen` — 对 `screen_contents()` 做 substring/regex 断言
+**实现状态：**
+- [x] `wait_for(pattern, timeout)` — 使用 streaming 订阅等待输出模式
+- [x] `assert_screen_contains` — 断言屏幕包含指定文本
+- [x] `TestRunner` 结构封装 DSL 操作
+- [x] CLI `test` 命令支持 `wait-for` 和 `assert-contains`
+- [x] 添加单元测试（2个）和集成测试（7个）
 
-### v0.2：多 session 并发控制
+### v0.2：多 session 并发控制 ✅
 
 当前 `write` / `dump` 是一次性连接。测试脚本会需要保持 IpcClient 长连接（或者 session 提供 subscribe 流式输出）。
+
+**实现状态：**
+- [x] streaming 订阅机制支持长连接
+- [x] `TestRunner` 封装连接管理
+- [x] 通过 `wait_for` 实现阻塞式等待，无需手动轮询
 
 ### v0.3：输出订阅 / streaming ✅
 

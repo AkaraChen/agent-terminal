@@ -1,4 +1,5 @@
 pub mod buffer;
+pub mod dsl;
 pub mod ipc;
 pub mod lock;
 pub mod protocol;

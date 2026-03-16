@@ -180,6 +180,36 @@ pty_reader_task
 
 ---
 
+## 测试用例 DSL
+
+`dsl` 模块提供高层测试原语，封装复杂的交互逻辑：
+
+```
+TestRunner (客户端)
+  │
+  ├─► subscribe() ────────────┐
+  │                            │
+  ├─► wait_for(pattern) ──────┤──► 接收 OutputChunk ──► 累积输出 ──► 匹配 pattern
+  │                            │
+  └─► assert_screen_contains()─┘
+```
+
+**核心功能**：
+- `wait_for(pattern, timeout)`: 使用 streaming 订阅等待输出模式出现
+- `assert_screen_contains(text)`: 断言当前屏幕包含指定文本
+- 自动管理订阅/取消订阅生命周期
+
+**CLI 集成**：
+```bash
+# 等待提示符出现
+agent-terminal test <session> wait-for "$ " --timeout 5
+
+# 断言屏幕内容
+agent-terminal test <session> assert-contains "hello"
+```
+
+---
+
 ## 并发模型
 
 - 整体运行在 `tokio` current-thread 调度器下（从 `cli::run()` 手动 `build().block_on()`）
@@ -216,6 +246,7 @@ stdin_relay_task (spawn_blocking)
 | `lock.rs` | ~98% | 路径生成、write/read roundtrip、heartbeat、scan_active 含错误分支 |
 | `ipc.rs` | 100% | write_frame/read_frame framing、超大帧拒绝、IpcClient 所有分支（含 mock Unix socket server）|
 | `session.rs` | N/A (集成测试) | Mock PTY 生命周期、命令执行、并发客户端、SIGWINCH resize |
+| `dsl.rs` | N/A (集成测试) | TestRunner wait_for、assert_screen_contains、output 缓冲管理 |
 
 运行方式：
 
