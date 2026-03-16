@@ -74,15 +74,22 @@ stop session
 
 当前 `write` / `dump` 是一次性连接。测试脚本会需要保持 IpcClient 长连接（或者 session 提供 subscribe 流式输出）。
 
-### v0.3：输出订阅 / streaming
+### v0.3：输出订阅 / streaming ✅
 
 新增 IPC 消息类型：
 
 ```json
 { "type": "subscribe" }
+{ "type": "unsubscribe" }
 ```
 
 session 对订阅者持续推送新写入的 bytes（pty_reader_task 写 buffer 时同时 fan-out 给所有订阅者）。这样测试代码不用轮询，可以用 `recv().await` 等待。
+
+**实现状态：**
+- [x] 新增 `Subscribe` / `Unsubscribe` / `OutputChunk` 协议消息
+- [x] 使用 `tokio::sync::broadcast` 实现多订阅者广播
+- [x] session 支持同时处理多个订阅客户端
+- [x] 添加单元测试（6个）和集成测试（5个）
 
 ### v0.3：Linux 支持 ✅
 

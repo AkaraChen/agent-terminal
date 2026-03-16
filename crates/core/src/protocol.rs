@@ -8,6 +8,10 @@ pub enum Request {
     WriteInput { data: String },
     /// Ask the session for its current output buffer.
     GetOutput,
+    /// Subscribe to output stream.
+    Subscribe,
+    /// Unsubscribe from output stream.
+    Unsubscribe,
 }
 
 /// Response returned by the session server over the Unix socket.
@@ -20,6 +24,11 @@ pub enum Response {
         raw_b64: String,
         /// Rendered screen text (current VT100 state).
         screen: String,
+    },
+    /// Streaming output chunk (for subscribers).
+    OutputChunk {
+        /// Raw bytes (base64-encoded) of the new output chunk.
+        raw_b64: String,
     },
     Error {
         message: String,
@@ -151,5 +160,57 @@ mod tests {
         let resp = Response::Output { raw_b64: String::new(), screen: String::new() };
         let json = serde_json::to_string(&resp).unwrap();
         assert!(json.contains("\"type\":\"output\""), "json = {json}");
+    }
+
+    // ── Subscribe/Unsubscribe ───────────────────────────────────────────
+
+    #[test]
+    fn test_subscribe_deserializes() {
+        let json = r#"{"type":"subscribe"}"#;
+        let req: Request = serde_json::from_str(json).unwrap();
+        assert!(matches!(req, Request::Subscribe));
+    }
+
+    #[test]
+    fn test_unsubscribe_deserializes() {
+        let json = r#"{"type":"unsubscribe"}"#;
+        let req: Request = serde_json::from_str(json).unwrap();
+        assert!(matches!(req, Request::Unsubscribe));
+    }
+
+    #[test]
+    fn test_subscribe_serializes_type_tag() {
+        let req = Request::Subscribe;
+        let json = serde_json::to_string(&req).unwrap();
+        assert!(json.contains("\"type\":\"subscribe\""), "json = {json}");
+    }
+
+    #[test]
+    fn test_unsubscribe_serializes_type_tag() {
+        let req = Request::Unsubscribe;
+        let json = serde_json::to_string(&req).unwrap();
+        assert!(json.contains("\"type\":\"unsubscribe\""), "json = {json}");
+    }
+
+    #[test]
+    fn test_output_chunk_roundtrip() {
+        let resp = Response::OutputChunk {
+            raw_b64: "aGVsbG8=".to_string(),
+        };
+        let json = serde_json::to_string(&resp).unwrap();
+        let back: Response = serde_json::from_str(&json).unwrap();
+        match back {
+            Response::OutputChunk { raw_b64 } => {
+                assert_eq!(raw_b64, "aGVsbG8=");
+            }
+            _ => panic!("expected OutputChunk"),
+        }
+    }
+
+    #[test]
+    fn test_output_chunk_type_tag() {
+        let resp = Response::OutputChunk { raw_b64: "dGVzdA==".to_string() };
+        let json = serde_json::to_string(&resp).unwrap();
+        assert!(json.contains("\"type\":\"output_chunk\""), "json = {json}");
     }
 }

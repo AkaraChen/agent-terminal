@@ -98,10 +98,13 @@ run_session(shell)
 Request (client → session):
   { "type": "write_input",  "data": "ls\n" }
   { "type": "get_output"  }
+  { "type": "subscribe" }      # Start streaming output
+  { "type": "unsubscribe" }    # Stop streaming output
 
 Response (session → client):
   { "type": "ok" }
   { "type": "output", "raw_b64": "<base64>", "screen": "..." }
+  { "type": "output_chunk", "raw_b64": "<base64>" }  # Streaming response
   { "type": "error",  "message": "..." }
 ```
 
@@ -139,6 +142,26 @@ Response (session → client):
 - Parser 的行列维度在 `run_session()` 开始时从当前终端尺寸读取（`crossterm::terminal::size()`，fallback 220×50）
 
 > **注意**：vt100::Parser 不动态 resize。如果 SIGWINCH 后终端尺寸变化，Parser 的屏幕大小不会跟着变。此问题记录在 [roadmap.md](roadmap.md)。
+
+---
+
+## 输出 Streaming
+
+使用 `tokio::sync::broadcast` 实现多订阅者输出流：
+
+```
+pty_reader_task
+  │
+  ├─► OutputBuffer.push(data)
+  └─► broadcast_tx.send(data) ─────► 订阅者1 (recv().await)
+                                    订阅者2 (recv().await)
+                                    订阅者N (recv().await)
+```
+
+**特点**：
+- 广播容量：1024 条消息（超限时旧订阅者会收到 `broadcast::error::RecvError::Lagged`）
+- 订阅者在订阅瞬间开始接收新数据（不保证历史数据）
+- 每个 IPC 连接独立管理订阅状态
 
 ---
 

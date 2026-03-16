@@ -9,7 +9,7 @@ use crossterm::terminal;
 use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem};
 use tokio::{
     net::{UnixListener, UnixStream},
-    sync::watch,
+    sync::{broadcast, watch},
     time::{interval, Duration},
 };
 
@@ -19,6 +19,10 @@ use crate::{
     lock::LockFile,
     protocol::{Request, Response},
 };
+use base64::Engine;
+
+/// Capacity for the broadcast channel (output streaming).
+const BROADCAST_CAPACITY: usize = 1024;
 
 /// Entry point: start a PTY session running a shell, then block until the
 /// child exits (or the process is killed).
@@ -71,6 +75,9 @@ pub async fn run_session(shell: &str) -> Result<()> {
     // ── 4. Shared output buffer ─────────────────────────────────────────
     let buffer = Arc::new(Mutex::new(OutputBuffer::new(rows, cols)));
 
+    // ── 4b. Broadcast channel for output streaming ──────────────────────
+    let (broadcast_tx, _) = broadcast::channel::<Vec<u8>>(BROADCAST_CAPACITY);
+
     // ── 5. PTY reader & writer handles ─────────────────────────────────
     let pty_reader = pty_pair
         .master
@@ -112,6 +119,7 @@ pub async fn run_session(shell: &str) -> Result<()> {
     let buf_for_ipc = Arc::clone(&buffer);
     let pty_writer_ipc = Arc::clone(&pty_writer);
     let cancel_rx_ipc = cancel_rx.clone();
+    let broadcast_tx_ipc = broadcast_tx.clone();
     tokio::spawn(async move {
         let mut cancel = cancel_rx_ipc;
         loop {
@@ -121,7 +129,8 @@ pub async fn run_session(shell: &str) -> Result<()> {
                         Ok((stream, _)) => {
                             let buf = Arc::clone(&buf_for_ipc);
                             let writer = Arc::clone(&pty_writer_ipc);
-                            tokio::spawn(handle_ipc_client(stream, buf, writer));
+                            let broadcast_tx = broadcast_tx_ipc.clone();
+                            tokio::spawn(handle_ipc_client(stream, buf, writer, broadcast_tx));
                         }
                         Err(_) => break,
                     }
@@ -131,9 +140,10 @@ pub async fn run_session(shell: &str) -> Result<()> {
         }
     });
 
-    // 7c. PTY reader: copy PTY output → stdout + buffer.
+    // 7c. PTY reader: copy PTY output → stdout + buffer + broadcast.
     let buf_for_reader = Arc::clone(&buffer);
     let cancel_rx_reader = cancel_rx.clone();
+    let broadcast_tx_reader = broadcast_tx.clone();
     let reader_handle = tokio::task::spawn_blocking(move || {
         let mut reader = pty_reader;
         let cancel = cancel_rx_reader;
@@ -155,6 +165,8 @@ pub async fn run_session(shell: &str) -> Result<()> {
                     if let Ok(mut buf) = buf_for_reader.lock() {
                         buf.push(data);
                     }
+                    // Broadcast to subscribers.
+                    let _ = broadcast_tx_reader.send(data.to_vec());
                 }
                 Err(_) => break,
             }
@@ -212,43 +224,112 @@ async fn handle_ipc_client(
     mut stream: UnixStream,
     buffer: Arc<Mutex<OutputBuffer>>,
     pty_writer: Arc<Mutex<Box<dyn Write + Send>>>,
+    broadcast_tx: broadcast::Sender<Vec<u8>>,
 ) {
-    loop {
-        let req: Request = match read_frame(&mut stream).await {
-            Ok(r) => r,
-            Err(_) => break,
-        };
+    // Track if this client is subscribed for streaming
+    let mut rx: Option<broadcast::Receiver<Vec<u8>>> = None;
 
-        let resp = match req {
-            Request::WriteInput { data } => {
-                match pty_writer.lock() {
-                    Ok(mut w) => {
-                        if w.write_all(data.as_bytes()).is_ok() {
-                            Response::Ok
-                        } else {
-                            Response::Error {
-                                message: "write to PTY failed".into(),
+    loop {
+        let resp = if let Some(ref mut receiver) = rx {
+            // Subscribed mode: handle both requests and broadcast messages
+            tokio::select! {
+                req_result = read_frame::<Request>(&mut stream) => {
+                    match req_result {
+                        Ok(Request::Unsubscribe) => {
+                            rx = None;
+                            Some(Response::Ok)
+                        }
+                        Ok(Request::WriteInput { data }) => {
+                            match pty_writer.lock() {
+                                Ok(mut w) => {
+                                    if w.write_all(data.as_bytes()).is_ok() {
+                                        Some(Response::Ok)
+                                    } else {
+                                        Some(Response::Error {
+                                            message: "write to PTY failed".into(),
+                                        })
+                                    }
+                                }
+                                Err(_) => Some(Response::Error {
+                                    message: "PTY writer lock poisoned".into(),
+                                }),
                             }
                         }
+                        Ok(Request::GetOutput) => match buffer.lock() {
+                            Ok(buf) => Some(Response::Output {
+                                raw_b64: buf.raw_b64(),
+                                screen: buf.screen_contents(),
+                            }),
+                            Err(_) => Some(Response::Error {
+                                message: "buffer lock poisoned".into(),
+                            }),
+                        },
+                        Ok(Request::Subscribe) => Some(Response::Error {
+                            message: "already subscribed".into(),
+                        }),
+                        Err(_) => break,
                     }
-                    Err(_) => Response::Error {
-                        message: "PTY writer lock poisoned".into(),
-                    },
+                }
+                broadcast_result = receiver.recv() => {
+                    match broadcast_result {
+                        Ok(data) => {
+                            Some(Response::OutputChunk {
+                                raw_b64: base64::engine::general_purpose::STANDARD.encode(&data),
+                            })
+                        }
+                        Err(_) => {
+                            // Broadcast channel closed or lagged, unsubscribe
+                            rx = None;
+                            continue;
+                        }
+                    }
                 }
             }
-            Request::GetOutput => match buffer.lock() {
-                Ok(buf) => Response::Output {
-                    raw_b64: buf.raw_b64(),
-                    screen: buf.screen_contents(),
+        } else {
+            // Not subscribed mode: just handle requests
+            let req: Request = match read_frame(&mut stream).await {
+                Ok(r) => r,
+                Err(_) => break,
+            };
+
+            match req {
+                Request::Subscribe => {
+                    rx = Some(broadcast_tx.subscribe());
+                    Some(Response::Ok)
+                }
+                Request::Unsubscribe => Some(Response::Ok),
+                Request::WriteInput { data } => {
+                    match pty_writer.lock() {
+                        Ok(mut w) => {
+                            if w.write_all(data.as_bytes()).is_ok() {
+                                Some(Response::Ok)
+                            } else {
+                                Some(Response::Error {
+                                    message: "write to PTY failed".into(),
+                                })
+                            }
+                        }
+                        Err(_) => Some(Response::Error {
+                            message: "PTY writer lock poisoned".into(),
+                        }),
+                    }
+                }
+                Request::GetOutput => match buffer.lock() {
+                    Ok(buf) => Some(Response::Output {
+                        raw_b64: buf.raw_b64(),
+                        screen: buf.screen_contents(),
+                    }),
+                    Err(_) => Some(Response::Error {
+                        message: "buffer lock poisoned".into(),
+                    }),
                 },
-                Err(_) => Response::Error {
-                    message: "buffer lock poisoned".into(),
-                },
-            },
+            }
         };
 
-        if write_frame(&mut stream, &resp).await.is_err() {
-            break;
+        if let Some(resp) = resp {
+            if write_frame(&mut stream, &resp).await.is_err() {
+                break;
+            }
         }
     }
 }
