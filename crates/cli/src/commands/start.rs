@@ -1,5 +1,6 @@
+use agent_terminal_core::session;
 use anyhow::Result;
 
 pub async fn run() -> Result<()> {
-    core::session::run_session().await
+    session::run_session().await
 }

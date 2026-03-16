@@ -1,5 +1,5 @@
+use agent_terminal_core::lock::LockFile;
 use anyhow::Result;
-use core::lock::LockFile;
 use std::time::{Duration, UNIX_EPOCH};
 
 pub fn run() -> Result<()> {

@@ -1,5 +1,5 @@
 [package]
-name = "core"
+name = "agent-terminal-core"
 version = "0.1.0"
 edition = "2021"
 
@@ -15,3 +15,9 @@ libc = "0.2"
 anyhow = "1"
 nix = { version = "0.27", features = ["signal", "ioctl", "term"] }
 base64 = "0.22"
+chrono = "0.4"
+
+[dev-dependencies]
+tempfile = "3"
+tokio-test = "0.4"
+serial_test = "3"

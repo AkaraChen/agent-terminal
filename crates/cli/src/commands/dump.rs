@@ -1,5 +1,5 @@
+use agent_terminal_core::{ipc::IpcClient, lock::LockFile};
 use anyhow::Result;
-use core::{ipc::IpcClient, lock::LockFile};
 
 pub async fn run(session_id_prefix: &str) -> Result<()> {
     let lock = LockFile::find_active(session_id_prefix)
