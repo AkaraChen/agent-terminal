@@ -77,6 +77,11 @@ enum Commands {
         #[command(subcommand)]
         action: RemoteAction,
     },
+    /// Run performance benchmarks on a session.
+    Bench {
+        /// Session ID (or unique prefix) to target.
+        session_id: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -141,5 +146,8 @@ pub fn run() -> Result<()> {
             token,
             action,
         } => rt.block_on(commands::remote::run(&addr, &token, action)),
+        Commands::Bench { session_id } => {
+            rt.block_on(commands::bench::run(&session_id))
+        }
     }
 }
