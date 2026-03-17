@@ -118,7 +118,7 @@ impl TestRunner {
                         return Err(anyhow::anyhow!("stream error: {}", message))
                     }
                     Ok(_) => continue,
-                    Err(e) => return Err(e.into()),
+                    Err(e) => return Err(e),
                 }
             }
         })
@@ -170,8 +170,6 @@ impl TestRunner {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
-
     #[test]
     fn test_output_buffer_accumulation() {
         // This is a basic unit test for the buffer logic

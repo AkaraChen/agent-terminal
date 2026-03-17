@@ -7,7 +7,7 @@ use std::{
 
 use anyhow::{Context, Result};
 use crossterm::{event, terminal};
-use portable_pty::{CommandBuilder, MasterPty, NativePtySystem, PtySize, PtySystem};
+use portable_pty::{CommandBuilder, NativePtySystem, PtySize, PtySystem};
 
 /// Poll interval for checking cancel signal in blocking tasks.
 const CANCEL_POLL_INTERVAL: StdDuration = StdDuration::from_millis(100);

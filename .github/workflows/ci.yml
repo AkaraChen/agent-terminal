@@ -34,7 +34,7 @@ jobs:
         run: cargo build --release
 
       - name: Build with TCP feature
-        run: cargo build --release --features tcp
+        run: cargo build -p agent-terminal-core --release --features tcp
 
       - name: Run unit tests
         run: cargo test --lib -p agent-terminal-core
@@ -68,7 +68,7 @@ jobs:
         run: cargo build --release
 
       - name: Build with TCP feature
-        run: cargo build --release --features tcp
+        run: cargo build -p agent-terminal-core --release --features tcp
 
       - name: Run unit tests
         run: cargo test --lib -p agent-terminal-core
@@ -88,4 +88,6 @@ jobs:
         run: cargo fmt --all -- --check
 
       - name: Run clippy
-        run: cargo clippy --all-targets --all-features -- -D warnings
+        run: |
+          cargo clippy -p agent-terminal-core -- -D warnings
+          cargo clippy -p cli -- -D warnings

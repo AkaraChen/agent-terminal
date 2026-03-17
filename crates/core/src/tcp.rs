@@ -6,8 +6,6 @@
 use crate::ipc::{read_frame, write_frame};
 use crate::protocol::{Request, Response};
 use anyhow::{bail, Context, Result};
-use std::sync::Arc;
-use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpListener, TcpStream};
 
 /// A TCP client for connecting to remote sessions.
