@@ -59,6 +59,14 @@ enum Commands {
         #[command(subcommand)]
         action: TestAction,
     },
+    /// Interactive step debugger for terminal sessions.
+    Step {
+        /// Session ID (or unique prefix) to target.
+        session_id: String,
+        /// Optional initial command to execute.
+        #[arg(short, long)]
+        command: Option<String>,
+    },
     /// Connect to a remote session over TCP.
     Remote {
         /// TCP address (e.g., "192.168.1.100:8080").
@@ -124,6 +132,9 @@ pub fn run() -> Result<()> {
         } => rt.block_on(commands::debug::run(&session_id, raw, watch, analyze, history)),
         Commands::Test { session_id, action } => {
             rt.block_on(commands::test::run(&session_id, action))
+        }
+        Commands::Step { session_id, command } => {
+            rt.block_on(commands::step::run(&session_id, command))
         }
         Commands::Remote {
             addr,

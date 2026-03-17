@@ -97,7 +97,7 @@ pub async fn read_frame<T: serde::de::DeserializeOwned>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::protocol::{Request, Response, ScreenSnapshot};
+    use crate::protocol::{Request, Response};
     use tokio::io::AsyncWriteExt;
     use tokio::net::UnixListener;
 
