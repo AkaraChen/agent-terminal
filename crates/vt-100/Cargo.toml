@@ -1,0 +1,13 @@
+[package]
+name = "vt-100"
+version = "0.1.0"
+edition = "2021"
+description = "Wrapper around wezterm-term for agent-terminal"
+
+[dependencies]
+wezterm-term = { git = "https://github.com/wezterm/wezterm.git", rev = "05343b387085842b434d267f91b6b0ec157e4331" }
+termwiz = { git = "https://github.com/wezterm/wezterm.git", rev = "05343b387085842b434d267f91b6b0ec157e4331" }
+anyhow = "1"
+
+[dev-dependencies]
+base64 = "0.22"

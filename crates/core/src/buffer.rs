@@ -10,14 +10,14 @@ const MAX_RAW_BYTES: usize = 1024 * 1024; // 1 MB
 /// can retrieve the rendered "current screen" at any time.
 pub struct OutputBuffer {
     raw: Vec<u8>,
-    parser: vt100::Parser,
+    parser: vt_100::Parser,
 }
 
 impl OutputBuffer {
     pub fn new(rows: u16, cols: u16) -> Self {
         OutputBuffer {
             raw: Vec::new(),
-            parser: vt100::Parser::new(rows, cols, 0),
+            parser: vt_100::Parser::new(rows, cols),
         }
     }
 
@@ -43,7 +43,7 @@ impl OutputBuffer {
     /// Note: replaying raw buffer will lose some ANSI state (like previous clear-screen commands),
     /// but it's the best we can do since vt100 library doesn't support resize.
     pub fn resize(&mut self, rows: u16, cols: u16) {
-        let mut new_parser = vt100::Parser::new(rows, cols, 0);
+        let mut new_parser = vt_100::Parser::new(rows, cols);
         // Replay the raw buffer into the new parser
         new_parser.process(&self.raw);
         self.parser = new_parser;
@@ -52,30 +52,7 @@ impl OutputBuffer {
     /// Return a plain-text rendering of the current VT100 screen state.
     /// Each row is separated by '\n'; trailing spaces on each row are trimmed.
     pub fn screen_contents(&self) -> String {
-        let screen = self.parser.screen();
-        let rows = screen.size().0;
-        let cols = screen.size().1;
-        let mut lines: Vec<String> = Vec::with_capacity(rows as usize);
-        for row in 0..rows {
-            let mut line = String::with_capacity(cols as usize);
-            for col in 0..cols {
-                let cell = screen.cell(row, col);
-                let ch = cell
-                    .map(|c| c.contents())
-                    .unwrap_or_else(|| " ".to_string());
-                if ch.is_empty() {
-                    line.push(' ');
-                } else {
-                    line.push_str(&ch);
-                }
-            }
-            lines.push(line.trim_end().to_string());
-        }
-        // Drop trailing empty lines.
-        while lines.last().map(|l: &String| l.is_empty()).unwrap_or(false) {
-            lines.pop();
-        }
-        lines.join("\n")
+        self.parser.screen_contents()
     }
 }
 
