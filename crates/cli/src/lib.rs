@@ -48,6 +48,9 @@ enum Commands {
         /// Analyze ANSI sequences and screen state.
         #[arg(short, long)]
         analyze: bool,
+        /// Show screen history snapshots (specify number of snapshots).
+        #[arg(short = 'n', long, value_name = "COUNT")]
+        history: Option<usize>,
     },
     /// Run a DSL test command against a session.
     Test {
@@ -117,7 +120,8 @@ pub fn run() -> Result<()> {
             raw,
             watch,
             analyze,
-        } => rt.block_on(commands::debug::run(&session_id, raw, watch, analyze)),
+            history,
+        } => rt.block_on(commands::debug::run(&session_id, raw, watch, analyze, history)),
         Commands::Test { session_id, action } => {
             rt.block_on(commands::test::run(&session_id, action))
         }

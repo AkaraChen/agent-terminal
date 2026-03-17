@@ -1,5 +1,18 @@
 use serde::{Deserialize, Serialize};
 
+/// A snapshot of the screen state at a specific time.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ScreenSnapshot {
+    /// Timestamp in milliseconds since epoch.
+    pub timestamp_ms: u64,
+    /// The screen content at this snapshot.
+    pub screen: String,
+    /// Raw ANSI bytes (base64-encoded) that led to this state.
+    pub raw_b64: String,
+    /// Optional label for this snapshot (e.g., "after_vim_start").
+    pub label: Option<String>,
+}
+
 /// Requests sent by IPC clients to the session server.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
@@ -12,6 +25,8 @@ pub enum Request {
     Subscribe,
     /// Unsubscribe from output stream.
     Unsubscribe,
+    /// Get screen history for debugging (last N snapshots).
+    GetScreenHistory { count: usize },
     /// Authenticate with the server (TCP mode).
     Authenticate { token: String },
 }
@@ -31,6 +46,11 @@ pub enum Response {
     OutputChunk {
         /// Raw bytes (base64-encoded) of the new output chunk.
         raw_b64: String,
+    },
+    /// Screen history for debugging.
+    ScreenHistory {
+        /// List of screen snapshots with timestamps.
+        snapshots: Vec<ScreenSnapshot>,
     },
     Error {
         message: String,

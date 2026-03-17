@@ -4,7 +4,7 @@ use tokio::{
     net::UnixStream,
 };
 
-use crate::protocol::{Request, Response};
+use crate::protocol::{Request, Response, ScreenSnapshot};
 
 /// Length-prefixed JSON framing: [u32 LE length][JSON bytes].
 pub struct IpcClient {
@@ -49,6 +49,15 @@ impl IpcClient {
             other => bail!("unexpected response: {:?}", other),
         }
     }
+
+    /// Convenience: request screen history snapshots.
+    pub async fn get_screen_history(&mut self, count: usize) -> Result<Vec<ScreenSnapshot>> {
+        match self.send(&Request::GetScreenHistory { count }).await? {
+            Response::ScreenHistory { snapshots } => Ok(snapshots),
+            Response::Error { message } => bail!("session error: {}", message),
+            other => bail!("unexpected response: {:?}", other),
+        }
+    }
 }
 
 /// Write a length-prefixed JSON frame to the stream.
@@ -88,7 +97,7 @@ pub async fn read_frame<T: serde::de::DeserializeOwned>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::protocol::{Request, Response};
+    use crate::protocol::{Request, Response, ScreenSnapshot};
     use tokio::io::AsyncWriteExt;
     use tokio::net::UnixListener;
 

@@ -17,6 +17,7 @@ pub async fn run(
     raw: bool,
     watch: bool,
     analyze: bool,
+    history: Option<usize>,
 ) -> Result<()> {
     let lock = match LockFile::find_active(session_id) {
         Some(l) => l,
@@ -26,6 +27,32 @@ pub async fn run(
     let mut client = IpcClient::connect(&lock.socket_path)
         .await
         .context("connect to session")?;
+
+    // Handle history mode first
+    if let Some(count) = history {
+        let snapshots = client.get_screen_history(count).await?;
+
+        println!("{}=== Session {} | Screen History (last {} snapshots) ==={}\n",
+            CYAN, session_id, snapshots.len(), RESET);
+
+        for (i, snapshot) in snapshots.iter().enumerate() {
+            let label_str = snapshot.label.as_ref()
+                .map(|l| format!(" [{}]", l))
+                .unwrap_or_default();
+
+            println!("{}--- Snapshot {}{} @ {}ms ---{}",
+                YELLOW, i + 1, label_str, snapshot.timestamp_ms, RESET);
+            println!("{}", snapshot.screen);
+            println!();
+
+            if raw && !snapshot.raw_b64.is_empty() {
+                println!("{}Raw bytes (base64):{} {}",
+                    MAGENTA, RESET, &snapshot.raw_b64[..snapshot.raw_b64.len().min(80)]);
+            }
+        }
+
+        return Ok(());
+    }
 
     if watch {
         // Watch mode: continuously display screen

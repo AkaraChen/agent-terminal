@@ -333,6 +333,26 @@ async fn handle_ipc_client(
                         Ok(Request::Subscribe) => Some(Response::Error {
                             message: "already subscribed".into(),
                         }),
+                        Ok(Request::GetScreenHistory { count }) => match buffer.lock() {
+                            Ok(buf) => {
+                                use crate::protocol::ScreenSnapshot;
+                                let snapshots: Vec<ScreenSnapshot> = buf
+                                    .get_screen_history(count)
+                                    .into_iter()
+                                    .map(|s| ScreenSnapshot {
+                                        timestamp_ms: s.timestamp_ms,
+                                        screen: s.screen.clone(),
+                                        raw_b64: base64::engine::general_purpose::STANDARD
+                                            .encode(&s.raw_bytes),
+                                        label: s.label.clone(),
+                                    })
+                                    .collect();
+                                Some(Response::ScreenHistory { snapshots })
+                            }
+                            Err(_) => Some(Response::Error {
+                                message: "buffer lock poisoned".into(),
+                            }),
+                        },
                         Ok(Request::Authenticate { .. }) => Some(Response::Error {
                             message: "authentication not supported on Unix socket".into(),
                         }),
@@ -386,6 +406,26 @@ async fn handle_ipc_client(
                         raw_b64: buf.raw_b64(),
                         screen: buf.screen_contents(),
                     }),
+                    Err(_) => Some(Response::Error {
+                        message: "buffer lock poisoned".into(),
+                    }),
+                },
+                Request::GetScreenHistory { count } => match buffer.lock() {
+                    Ok(buf) => {
+                        use crate::protocol::ScreenSnapshot;
+                        let snapshots: Vec<ScreenSnapshot> = buf
+                            .get_screen_history(count)
+                            .into_iter()
+                            .map(|s| ScreenSnapshot {
+                                timestamp_ms: s.timestamp_ms,
+                                screen: s.screen.clone(),
+                                raw_b64: base64::engine::general_purpose::STANDARD
+                                    .encode(&s.raw_bytes),
+                                label: s.label.clone(),
+                            })
+                            .collect();
+                        Some(Response::ScreenHistory { snapshots })
+                    }
                     Err(_) => Some(Response::Error {
                         message: "buffer lock poisoned".into(),
                     }),

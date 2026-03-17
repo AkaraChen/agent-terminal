@@ -1,7 +1,24 @@
 use base64::{engine::general_purpose::STANDARD, Engine as _};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 /// Maximum raw bytes to retain before pruning the front of the buffer.
 const MAX_RAW_BYTES: usize = 1024 * 1024; // 1 MB
+
+/// Maximum number of screen snapshots to keep for debugging.
+const MAX_SCREEN_SNAPSHOTS: usize = 50;
+
+/// A snapshot of the screen state at a specific time.
+#[derive(Debug, Clone)]
+pub struct ScreenSnapshot {
+    /// Timestamp in milliseconds since epoch.
+    pub timestamp_ms: u64,
+    /// The screen content at this snapshot.
+    pub screen: String,
+    /// Raw ANSI bytes that led to this state.
+    pub raw_bytes: Vec<u8>,
+    /// Optional label for this snapshot.
+    pub label: Option<String>,
+}
 
 /// Holds captured PTY output.
 ///
@@ -11,6 +28,12 @@ const MAX_RAW_BYTES: usize = 1024 * 1024; // 1 MB
 pub struct OutputBuffer {
     raw: Vec<u8>,
     parser: vt_100::Parser,
+    /// Screen snapshots for debugging/analysis.
+    snapshots: Vec<ScreenSnapshot>,
+    /// Last snapshot time to avoid capturing too frequently.
+    last_snapshot_time_ms: u64,
+    /// Minimum interval between snapshots (ms).
+    snapshot_interval_ms: u64,
 }
 
 impl OutputBuffer {
@@ -18,6 +41,9 @@ impl OutputBuffer {
         OutputBuffer {
             raw: Vec::new(),
             parser: vt_100::Parser::new(rows, cols),
+            snapshots: Vec::new(),
+            last_snapshot_time_ms: 0,
+            snapshot_interval_ms: 100, // Capture at most every 100ms
         }
     }
 
@@ -30,6 +56,62 @@ impl OutputBuffer {
         if self.raw.len() > MAX_RAW_BYTES {
             let excess = self.raw.len() - MAX_RAW_BYTES;
             self.raw.drain(..excess);
+        }
+
+        // Capture snapshot if enough time has passed.
+        self.maybe_capture_snapshot(data);
+    }
+
+    /// Capture a screen snapshot if enough time has passed.
+    fn maybe_capture_snapshot(&mut self, data: &[u8]) {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64;
+
+        if now - self.last_snapshot_time_ms >= self.snapshot_interval_ms {
+            self.last_snapshot_time_ms = now;
+
+            let snapshot = ScreenSnapshot {
+                timestamp_ms: now,
+                screen: self.parser.screen_contents(),
+                raw_bytes: data.to_vec(),
+                label: None,
+            };
+
+            self.snapshots.push(snapshot);
+
+            // Trim old snapshots if over limit.
+            if self.snapshots.len() > MAX_SCREEN_SNAPSHOTS {
+                self.snapshots.drain(0..self.snapshots.len() - MAX_SCREEN_SNAPSHOTS);
+            }
+        }
+    }
+
+    /// Get the last N screen snapshots for debugging.
+    pub fn get_screen_history(&self, count: usize) -> Vec<&ScreenSnapshot> {
+        let start = self.snapshots.len().saturating_sub(count);
+        self.snapshots[start..].iter().collect()
+    }
+
+    /// Add a labeled snapshot for marking important states.
+    pub fn add_labeled_snapshot(&mut self, label: &str) {
+        let now = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_millis() as u64;
+
+        let snapshot = ScreenSnapshot {
+            timestamp_ms: now,
+            screen: self.parser.screen_contents(),
+            raw_bytes: Vec::new(),
+            label: Some(label.to_string()),
+        };
+
+        self.snapshots.push(snapshot);
+
+        if self.snapshots.len() > MAX_SCREEN_SNAPSHOTS {
+            self.snapshots.drain(0..self.snapshots.len() - MAX_SCREEN_SNAPSHOTS);
         }
     }
 
