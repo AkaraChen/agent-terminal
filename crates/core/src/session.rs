@@ -37,7 +37,10 @@ const BROADCAST_CAPACITY: usize = 1024;
 /// * `shell` - Path to the shell executable (e.g., "/bin/zsh", "/bin/bash")
 pub async fn run_session(shell: &str) -> Result<()> {
     // ── 1. Determine terminal size ──────────────────────────────────────
-    let (cols, rows) = terminal::size().unwrap_or((220, 50));
+    // Get terminal size, ensuring minimum dimensions to prevent vt100 parser overflow
+    let (cols, rows) = terminal::size()
+        .map(|(c, r)| (c.max(10), r.max(5))) // Ensure at least 10 cols x 5 rows
+        .unwrap_or((80, 24)); // Standard terminal fallback
     let pty_size = PtySize {
         rows,
         cols,
@@ -232,7 +235,8 @@ pub async fn run_session(shell: &str) -> Result<()> {
             tokio::select! {
                 _ = sigwinch.recv() => {
                     // Terminal size changed, resize PTY and buffer
-                    if let Ok((new_cols, new_rows)) = terminal::size() {
+                    // Ensure minimum dimensions to prevent vt100 parser overflow
+                    if let Ok((new_cols, new_rows)) = terminal::size().map(|(c, r)| (c.max(10), r.max(5))) {
                         let new_size = PtySize {
                             rows: new_rows,
                             cols: new_cols,
