@@ -44,5 +44,17 @@ pub async fn run(session_id: &str, action: TestAction) -> Result<()> {
                 }
             }
         }
+        TestAction::Write { data } => {
+            println!("Writing input: '{}'...", data);
+            match runner.write_input(&data).await {
+                Ok(_) => {
+                    println!("✓ Input written");
+                    Ok(())
+                }
+                Err(e) => {
+                    bail!("✗ Failed to write input: {}", e);
+                }
+            }
+        }
     }
 }

@@ -77,6 +77,11 @@ pub enum TestAction {
         /// Text that should be present on screen.
         text: String,
     },
+    /// Write input to the session.
+    Write {
+        /// Data to send (e.g. "ls\n").
+        data: String,
+    },
 }
 
 pub fn run() -> Result<()> {
