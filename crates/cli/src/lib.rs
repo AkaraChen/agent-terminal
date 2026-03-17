@@ -35,6 +35,20 @@ enum Commands {
         /// Session ID (or unique prefix) to target.
         session_id: String,
     },
+    /// Debug a running session with advanced analysis options.
+    Debug {
+        /// Session ID (or unique prefix) to target.
+        session_id: String,
+        /// Show raw ANSI bytes (base64 encoded).
+        #[arg(short, long)]
+        raw: bool,
+        /// Watch mode - continuously update.
+        #[arg(short, long)]
+        watch: bool,
+        /// Analyze ANSI sequences and screen state.
+        #[arg(short, long)]
+        analyze: bool,
+    },
     /// Run a DSL test command against a session.
     Test {
         /// Session ID (or unique prefix) to target.
@@ -98,6 +112,12 @@ pub fn run() -> Result<()> {
             rt.block_on(commands::write::run(&session_id, &data))
         }
         Commands::Dump { session_id } => rt.block_on(commands::dump::run(&session_id)),
+        Commands::Debug {
+            session_id,
+            raw,
+            watch,
+            analyze,
+        } => rt.block_on(commands::debug::run(&session_id, raw, watch, analyze)),
         Commands::Test { session_id, action } => {
             rt.block_on(commands::test::run(&session_id, action))
         }

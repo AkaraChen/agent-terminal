@@ -395,6 +395,7 @@ version = "0.1.0"
 dependencies = [
  "agent-terminal-core",
  "anyhow",
+ "base64",
  "chrono",
  "clap",
  "serde",

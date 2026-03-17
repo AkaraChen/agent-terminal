@@ -1,3 +1,4 @@
+pub mod debug;
 pub mod dump;
 pub mod list;
 pub mod remote;
