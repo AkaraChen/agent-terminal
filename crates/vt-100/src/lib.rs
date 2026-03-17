@@ -226,4 +226,44 @@ mod tests {
         let screen = parser.screen_contents();
         assert!(screen.contains("primary screen"), "Should return to primary screen, got: {}", screen);
     }
+
+    #[test]
+    fn test_echo_hello_sequence() {
+        // Test the exact sequence seen in Python tests
+        let mut parser = Parser::new(24, 80);
+
+        // Simulate bash prompt and echo command
+        parser.process(b"\x1b[?1034h"); // Enable 8-bit meta mode
+        parser.process(b"bash-3.2$  ");
+        parser.process(b"\r"); // CR
+        parser.process(b"echo HELLO ");
+        parser.process(b"\r"); // CR
+        parser.process(b"\x1b[A"); // Cursor up
+        parser.process(b"\x1b[C\x1b[C\x1b[C\x1b[C\x1b[C\x1b[C\x1b[C\x1b[C\x1b[C"); // Cursor forward
+        parser.process(b"\x1b[K"); // Clear to end of line
+        parser.process(b"\r\n"); // Newline
+        parser.process(b"HELLO\r\n");
+
+        let screen = parser.screen_contents();
+        println!("Screen: {:?}", screen);
+
+        // The screen should contain HELLO somewhere
+        assert!(screen.contains("HELLO"), "Screen should contain HELLO, got: {:?}", screen);
+    }
+
+    #[test]
+    fn test_scrollback_behavior() {
+        // Test that content stays visible after processing
+        let mut parser = Parser::new(24, 80);
+
+        // Fill screen with lines
+        for i in 0..30 {
+            parser.process(format!("Line {}\r\n", i).as_bytes());
+        }
+
+        let screen = parser.screen_contents();
+
+        // Should see the last lines (screen holds 24 rows)
+        assert!(screen.contains("Line 29"), "Should see last line, got: {}", screen);
+    }
 }

@@ -93,7 +93,9 @@ pub async fn run_session(shell: &str) -> Result<()> {
     let pty_master = Arc::new(Mutex::new(pty_pair.master));
 
     // ── 6. Raw stdin ────────────────────────────────────────────────────
-    terminal::enable_raw_mode().context("enable raw mode")?;
+    // Enable raw mode for interactive use, but allow running without TTY
+    // (e.g., in background, Docker, or test environments)
+    let raw_mode_enabled = terminal::enable_raw_mode().is_ok();
 
     // Cancellation channel: when the child exits we shut everything down.
     let (cancel_tx, cancel_rx) = watch::channel(false);
@@ -177,49 +179,52 @@ pub async fn run_session(shell: &str) -> Result<()> {
     });
 
     // 7d. Stdin relay: copy raw stdin → PTY master writer (with cancel polling).
-    let writer_for_stdin = Arc::clone(&pty_writer);
-    let cancel_rx_stdin = cancel_rx.clone();
-    tokio::task::spawn_blocking(move || {
-        let cancel = cancel_rx_stdin;
-        loop {
-            if *cancel.borrow() {
-                break;
-            }
-            // Use crossterm poll to check for input with timeout, allowing periodic cancel checks
-            match event::poll(CANCEL_POLL_INTERVAL) {
-                Ok(true) => {
-                    // Input available, read it
-                    if let Ok(event::Event::Key(key_event)) = event::read() {
-                        if let event::KeyCode::Char(c) = key_event.code {
-                            let byte = c as u8;
-                            if let Ok(mut w) = writer_for_stdin.lock() {
-                                if w.write_all(&[byte]).is_err() {
-                                    break;
+    // Only enable if raw mode was successfully enabled (i.e., we have a TTY)
+    if raw_mode_enabled {
+        let writer_for_stdin = Arc::clone(&pty_writer);
+        let cancel_rx_stdin = cancel_rx.clone();
+        tokio::task::spawn_blocking(move || {
+            let cancel = cancel_rx_stdin;
+            loop {
+                if *cancel.borrow() {
+                    break;
+                }
+                // Use crossterm poll to check for input with timeout, allowing periodic cancel checks
+                match event::poll(CANCEL_POLL_INTERVAL) {
+                    Ok(true) => {
+                        // Input available, read it
+                        if let Ok(event::Event::Key(key_event)) = event::read() {
+                            if let event::KeyCode::Char(c) = key_event.code {
+                                let byte = c as u8;
+                                if let Ok(mut w) = writer_for_stdin.lock() {
+                                    if w.write_all(&[byte]).is_err() {
+                                        break;
+                                    }
                                 }
-                            }
-                        } else if key_event.code == event::KeyCode::Enter {
-                            if let Ok(mut w) = writer_for_stdin.lock() {
-                                if w.write_all(b"\n").is_err() {
-                                    break;
+                            } else if key_event.code == event::KeyCode::Enter {
+                                if let Ok(mut w) = writer_for_stdin.lock() {
+                                    if w.write_all(b"\n").is_err() {
+                                        break;
+                                    }
                                 }
-                            }
-                        } else if key_event.code == event::KeyCode::Backspace {
-                            if let Ok(mut w) = writer_for_stdin.lock() {
-                                if w.write_all(b"\x7f").is_err() {
-                                    break;
+                            } else if key_event.code == event::KeyCode::Backspace {
+                                if let Ok(mut w) = writer_for_stdin.lock() {
+                                    if w.write_all(b"\x7f").is_err() {
+                                        break;
+                                    }
                                 }
                             }
                         }
                     }
+                    Ok(false) => {
+                        // Timeout, loop back to check cancel signal
+                        continue;
+                    }
+                    Err(_) => break, // Error polling, exit
                 }
-                Ok(false) => {
-                    // Timeout, loop back to check cancel signal
-                    continue;
-                }
-                Err(_) => break, // Error polling, exit
             }
-        }
-    });
+        });
+    }
 
     // 7e. SIGWINCH handler: resize PTY when terminal size changes.
     let pty_master_resize = Arc::clone(&pty_master);

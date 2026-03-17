@@ -62,6 +62,41 @@ mod tests {
     use base64::engine::general_purpose::STANDARD;
 
     #[test]
+    fn test_alternate_screen_buffer() {
+        // Test that we can capture content in alternate screen buffer (used by vim)
+        let mut buf = OutputBuffer::new(24, 80);
+
+        // Normal content
+        buf.push(b"normal screen content");
+        let screen = buf.screen_contents();
+        assert!(screen.contains("normal screen content"));
+
+        // Switch to alternate screen (vim does this)
+        buf.push(b"\x1b[?1049h");
+
+        // Now vim would draw its UI
+        buf.push(b"\x1b[H"); // Move to home position
+        buf.push(b"vim editor text");
+
+        let screen = buf.screen_contents();
+        assert!(
+            screen.contains("vim editor text"),
+            "Alternate screen should contain vim text, got: {}",
+            screen
+        );
+
+        // Switch back to normal screen
+        buf.push(b"\x1b[?1049l");
+
+        let screen = buf.screen_contents();
+        assert!(
+            screen.contains("normal screen content"),
+            "Should return to normal screen, got: {}",
+            screen
+        );
+    }
+
+    #[test]
     fn test_new_empty_buffer() {
         let buf = OutputBuffer::new(24, 80);
         assert_eq!(buf.raw_b64(), STANDARD.encode(b""));
@@ -201,5 +236,38 @@ mod tests {
         buf.resize(10, 40);
         assert_eq!(buf.screen_contents(), "");
         assert_eq!(buf.raw_b64(), STANDARD.encode(b""));
+    }
+
+    #[test]
+    fn test_echo_hello_like_python() {
+        // Test the exact sequence from Python tests
+        let mut buf = OutputBuffer::new(24, 80);
+
+        // Initial content (zsh message)
+        buf.push(b"The default interactive shell is now zsh.\n");
+
+        // Echo sequence
+        buf.push(b"\x1b[?1034h");
+        buf.push(b"bash-3.2$  ");
+        buf.push(b"\r");
+        buf.push(b"echo HELLO ");
+        buf.push(b"\r");
+        buf.push(b"\x1b[A");
+        buf.push(b"\x1b[C\x1b[C\x1b[C\x1b[C\x1b[C\x1b[C\x1b[C\x1b[C\x1b[C");
+        buf.push(b"\x1b[K");
+        buf.push(b"\r\n");
+        buf.push(b"HELLO\r\n");
+
+        let screen = buf.screen_contents();
+        let raw = STANDARD.decode(&buf.raw_b64()).unwrap();
+
+        println!("Raw length: {}", raw.len());
+        println!("Screen: {:?}", screen);
+
+        // Raw should contain HELLO
+        assert!(String::from_utf8_lossy(&raw).contains("HELLO"), "Raw should contain HELLO");
+
+        // Screen should contain HELLO
+        assert!(screen.contains("HELLO"), "Screen should contain HELLO, got: {:?}", screen);
     }
 }
