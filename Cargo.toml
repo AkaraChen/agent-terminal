@@ -1,6 +1,6 @@
 [workspace]
 resolver = "2"
-members = [".", "crates/core", "crates/cli", "crates/vt-100"]
+members = [".", "crates/core", "crates/cli", "crates/vt-100", "crates/e2e"]
 
 [package]
 name = "agent-terminal"

@@ -82,6 +82,11 @@ enum Commands {
         /// Session ID (or unique prefix) to target.
         session_id: String,
     },
+    /// Run an ATDSL script file.
+    Run {
+        /// Path to the .atdsl script file.
+        script: String,
+    },
 }
 
 #[derive(Subcommand)]
@@ -149,5 +154,6 @@ pub fn run() -> Result<()> {
         Commands::Bench { session_id } => {
             rt.block_on(commands::bench::run(&session_id))
         }
+        Commands::Run { script } => rt.block_on(commands::run_dsl::run(&script)),
     }
 }

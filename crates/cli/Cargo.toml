@@ -5,6 +5,7 @@ edition = "2021"
 
 [dependencies]
 agent-terminal-core = { path = "../core" }
+agent-terminal-e2e = { path = "../e2e" }
 tokio = { version = "1", features = ["full"] }
 clap = { version = "4", features = ["derive"] }
 anyhow = "1"

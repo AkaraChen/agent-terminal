@@ -1,0 +1,25 @@
+# Vim E2E Test Script
+# This script tests basic vim functionality
+
+# Wait for shell to be ready
+wait 500ms
+
+# Start vim with a test file
+write "vim /tmp/atdsl_test.txt\n"
+wait 2s
+
+# Enter insert mode and type some content
+write "iHello from ATDSL!"
+wait 500ms
+
+# Verify content appears on screen
+assert_screen "Hello from ATDSL!"
+
+# Exit insert mode and save
+write "\x1b:wq\n"
+wait 1s
+
+# Clear buffer and verify file content
+write "cat /tmp/atdsl_test.txt\n"
+wait 500ms
+assert_screen "Hello from ATDSL!"

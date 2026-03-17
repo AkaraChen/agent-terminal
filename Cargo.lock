@@ -47,6 +47,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "agent-terminal-e2e"
+version = "0.1.0"
+dependencies = [
+ "agent-terminal-core",
+ "anyhow",
+ "base64",
+ "portable-pty",
+ "tokio",
+ "uuid",
+]
+
+[[package]]
 name = "aho-corasick"
 version = "1.1.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -394,6 +406,7 @@ name = "cli"
 version = "0.1.0"
 dependencies = [
  "agent-terminal-core",
+ "agent-terminal-e2e",
  "anyhow",
  "base64",
  "chrono",

@@ -3,6 +3,7 @@ pub mod debug;
 pub mod dump;
 pub mod list;
 pub mod remote;
+pub mod run_dsl;
 pub mod start;
 pub mod step;
 pub mod test;
