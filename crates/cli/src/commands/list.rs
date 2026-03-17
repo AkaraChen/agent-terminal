@@ -10,7 +10,10 @@ pub fn run() -> Result<()> {
         return Ok(());
     }
 
-    println!("{:<38}  {:>7}  {:<30}  STARTED AT", "SESSION ID", "PID", "SOCKET");
+    println!(
+        "{:<38}  {:>7}  {:<30}  STARTED AT",
+        "SESSION ID", "PID", "SOCKET"
+    );
     println!("{}", "-".repeat(95));
 
     for s in sessions {
