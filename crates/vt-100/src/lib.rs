@@ -205,4 +205,25 @@ mod tests {
         assert_eq!(parser.rows(), 30);
         assert_eq!(parser.cols(), 100);
     }
+
+    #[test]
+    fn test_alternate_screen() {
+        let mut parser = Parser::new(24, 80);
+
+        // 写入普通内容
+        parser.process(b"primary screen");
+        let screen = parser.screen_contents();
+        assert!(screen.contains("primary screen"), "Primary screen should contain text");
+
+        // 切换到 alternate screen
+        parser.process(b"\x1b[?1049h");
+        parser.process(b"alternate content");
+        let screen = parser.screen_contents();
+        assert!(screen.contains("alternate content"), "Alternate screen should contain text, got: {}", screen);
+
+        // 退出 alternate screen
+        parser.process(b"\x1b[?1049l");
+        let screen = parser.screen_contents();
+        assert!(screen.contains("primary screen"), "Should return to primary screen, got: {}", screen);
+    }
 }
