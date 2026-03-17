@@ -46,7 +46,7 @@ async fn spawn_mock_session(
                                     };
                                     let _ = write_frame(&mut stream, &resp).await;
                                 }
-                                Ok(Request::Subscribe) | Ok(Request::Unsubscribe) | Ok(Request::Authenticate { .. }) => {
+                                Ok(Request::Subscribe) | Ok(Request::Unsubscribe) | Ok(Request::Authenticate { .. }) | Ok(Request::GetScreenHistory { .. }) => {
                                     // Not supported in CLI mock
                                     let _ = write_frame(&mut stream, &Response::Error {
                                         message: "not supported".into(),

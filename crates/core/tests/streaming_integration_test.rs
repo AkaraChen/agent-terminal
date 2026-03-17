@@ -122,7 +122,7 @@ async fn handle_streaming_client(
                         Ok(Request::Subscribe) => Some(Response::Error {
                             message: "already subscribed".into(),
                         }),
-                        Ok(Request::Authenticate { .. }) => Some(Response::Error {
+                        Ok(Request::Authenticate { .. }) | Ok(Request::GetScreenHistory { .. }) => Some(Response::Error {
                             message: "authentication not supported on Unix socket".into(),
                         }),
                         Err(_) => break,
@@ -164,7 +164,7 @@ async fn handle_streaming_client(
                         screen: b.screen_contents(),
                     })
                 }
-                Request::Authenticate { .. } => Some(Response::Error {
+                Request::Authenticate { .. } | Request::GetScreenHistory { .. } => Some(Response::Error {
                     message: "authentication not supported on Unix socket".into(),
                 }),
             }

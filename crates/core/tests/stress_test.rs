@@ -43,7 +43,8 @@ async fn stress_test_rapid_writes() {
                             }
                             Ok(Request::Subscribe)
                             | Ok(Request::Unsubscribe)
-                            | Ok(Request::Authenticate { .. }) => {
+                            | Ok(Request::Authenticate { .. })
+                            | Ok(Request::GetScreenHistory { .. }) => {
                                 let _ = write_frame(
                                     &mut stream,
                                     &Response::Error {

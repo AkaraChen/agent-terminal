@@ -96,7 +96,7 @@ impl MockDslSession {
                                     Ok(Request::Unsubscribe) => {
                                         let _ = write_frame(&mut stream, &Response::Ok).await;
                                     }
-                                    Ok(Request::Authenticate { .. }) => {
+                                    Ok(Request::Authenticate { .. }) | Ok(Request::GetScreenHistory { .. }) => {
                                         let _ = write_frame(&mut stream, &Response::Error {
                                             message: "authentication not supported".into(),
                                         }).await;
